@@ -80,9 +80,13 @@ b {
     font-weight: bold;
 }
 
-.header{
+.h2-header {
     position: relative;
     top: 50px;
+}
+.h3-header{
+    margin-top: 20px;
+    font-size: 1em;
 }
 
 .btnn {
