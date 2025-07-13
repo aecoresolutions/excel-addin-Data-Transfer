@@ -298,11 +298,6 @@ Office.onReady((info) => {
     const s = document.getElementById("status");
     if (s) s.textContent = "";
   }
-  const logoutBtn = document.getElementById("requestLogout");
-  if (logoutBtn) {
-    logoutBtn.addEventListener("click", requestLogout);
-    console.log("Logout button event listener attached.");
-  }
 
   // When the user clicks "selectHeader", define a named range "HeaderRange" from the current selection
   document.getElementById("selectHeader").onclick = async () => {
@@ -313,6 +308,11 @@ Office.onReady((info) => {
       updateStatus("✅ HeaderRange defined from selected cells.");
     });
   };
+  const logoutBtn = document.getElementById("requestLogout");
+  if (logoutBtn) {
+    logoutBtn.addEventListener("click", requestLogout);
+    console.log("Logout button event listener attached.");
+  }
 });
 
 // Main function to run the import process from selected RTF files
