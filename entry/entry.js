@@ -8,7 +8,7 @@ import {
 async function start() {
   try {
     // 1. Init temporary app
-    const tempApp = initializeApp({ projectId: "excel-addin-auth" }, "temp");
+    const tempApp = initializeApp({ projectId: "data-transfer-44eb5" }, "temp");
     const db = getFirestore(tempApp);
 
     // 2. Get full Firebase config

@@ -6,18 +6,18 @@ import {
   deleteApp,
   getApps,
   getApp
-} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
 import {
   getFirestore,
   doc,
   getDoc
-} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
 
 import { loginUser, initAuthAndDb } from "../firebase-auth.js";   //  ← path fixed
 
 /* ── get full Firebase config from Firestore (temp unnamed app) */
 async function fetchConfig() {
-  const tmp = initializeApp({ projectId: "excel-addin-auth" }, "tmp-cfg");
+  const tmp = initializeApp({ projectId: "data-transfer-44eb5" }, "tmp-cfg");
   const cfgSnap = await getDoc(doc(getFirestore(tmp), "config", "firebase"));
   if (!cfgSnap.exists()) throw new Error("Firebase config not found in Firestore");
   const cfg = cfgSnap.data();
