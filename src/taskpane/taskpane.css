@@ -135,14 +135,16 @@ b {
     border: 2px solid;
     border-radius: 8px;
     width: 150px;
-    height: 40px;
+    height: 35px;
     /* padding: .5rem 1rem; */
-    /* font-size: 1.25rem 26px; */
     line-height: 1.5;
     /* border-radius: .3rem; */
     background-color: #00589C;
     color: rgb(239 246 255);
-    margin: 30px;
+    margin: 7px;
+    top: 40px;
+    /* left: 120px; */
+    position: relative;
 }
 
 .out-btnn:hover {
