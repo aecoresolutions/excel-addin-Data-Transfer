@@ -282,6 +282,9 @@
 
 
 
+import {
+  logoutRequestLocal
+} from "../firebase-auth.js";
 
 
 
@@ -294,6 +297,11 @@ Office.onReady((info) => {
     // Clear status message on load
     const s = document.getElementById("status");
     if (s) s.textContent = "";
+  }
+  const logoutBtn = document.getElementById("requestLogout");
+  if (logoutBtn) {
+    logoutBtn.addEventListener("click", requestLogout);
+    console.log("Logout button event listener attached.");
   }
 
   // When the user clicks "selectHeader", define a named range "HeaderRange" from the current selection
@@ -590,4 +598,19 @@ function writeRow(ws, headerMap, row, data) {
     const col = headerMap[hdr.toUpperCase()];
     if (col) ws.getCell(row - 1, col - 1).values = [[val]];
   });
+}
+
+
+/* ─── Request Logout (opens mail client) ─── */
+async function requestLogout() {
+  console.log("requestLogout function called.");
+  const email = localStorage.getItem("email") || "Unknown User";
+  const subject = encodeURIComponent("Logout Request");
+  const body = encodeURIComponent(`${email} requests logout from Excel Data Transfer Add‑in.`);
+  // window.location.href = `mailto:aecoresolutions@gmail.com?subject=${subject}&body=${body}`;
+  window.open(`mailto:aecoresolutions@gmail.com?subject=${subject}&body=${body}`, "_blank");
+  /* local clean‑up */
+  // logoutRequestLocal depends on Firebase. If Firebase is not initialized, this won't work.
+  await logoutRequestLocal();
+  console.log("logoutRequestLocal completed.");
 }

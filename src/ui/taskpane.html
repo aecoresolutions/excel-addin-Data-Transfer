@@ -24,7 +24,11 @@
     <h3 class="h3-header">Click below to import and map RTF files into the Excel sheet:</h3><br>
     <button id="selectHeader" class="btnn">📝 Select Header Range</button>
     <button id="run" class="btnn" style="margin-top: 0px;">📄 Import RTF Files</button>
-    <div id="status"></div>
+    <div id="status"></div> <br>
+
+    <button id="requestLogout">Request Logout</button>
+    <br>
+    <button onclick="openWhatsApp()">Contact on WhatsApp</button>
 
     <!-- <h1>Data Transfer Add-inn</h1>
     <button id="run">Run Macro</button>
@@ -32,6 +36,11 @@
     <!-- <p id="status" style="color: green; margin-top: 12px;"></p> -->
 
     <script src="../taskpane/taskpane.js"></script>
+    <script>
+        function openWhatsApp() {
+            window.open("https://wa.link/2zvwid", "_blank");
+        }
+    </script>
 </body>
 
 </html>
