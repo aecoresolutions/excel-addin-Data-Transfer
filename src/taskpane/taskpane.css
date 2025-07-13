@@ -132,23 +132,29 @@ b {
 }
 
 .out-section {
-background-color: aquamarine;
+    text-align: center;
+    align-self: center;
+    display: grid;
+    position: absolute;
+    justify-content: center;
 }
 
 .out-btnn {
+    /* justify-content: right; */
+    display: inline-grid;
     border: 2px solid;
     border-radius: 8px;
-    width: 150px;
-    height: 35px;
+    /* width: 115px; */
+    /* height: 58px; */
     /* padding: .5rem 1rem; */
-    line-height: 1.5;
+    line-height: 2;
     /* border-radius: .3rem; */
     background-color: #00589C;
     color: rgb(239 246 255);
     margin: 7px;
-    top: 40px;
+    /* top: 40px; */
     /* left: 120px; */
-    position: relative;
+    /* position: relative; */
 }
 
 .out-btnn:hover {
