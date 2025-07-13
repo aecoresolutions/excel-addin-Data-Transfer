@@ -100,11 +100,9 @@
 
 // src/firebase-auth.js
 
-import {
-  getAuth,
-  signInWithEmailAndPassword,
-  signOut
-} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, signOut }
+  from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+
 import {
   getFirestore,
   doc,
