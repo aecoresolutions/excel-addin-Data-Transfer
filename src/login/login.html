@@ -1,20 +1,26 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <title>Data Transfer Add-in</title>
+  <link rel="stylesheet" href="../taskpane/taskpane.css">
+  <link rel="stylesheet"
+    href="https://res-1.cdn.office.net/files/fabric-cdn-prod_20230815.002/office-ui-fabric-core/11.1.0/css/fabric.min.css" />
+
   <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
   <script type="module" src="login.js"></script>
- </style>
 </head>
+
 <body>
-  <h2>Data Transfer Add-in</h2>
-  <input type="email" id="emailInput" placeholder="Email" autocomplete="email" />
-  <input type="password" id="passwordInput" placeholder="Password" autocomplete="current-password" />
-  <button id="loginBtn">Login</button>
+  <h2 class="h2-header">Data Transfer Add-in</h2>
+  <input type="email" id="emailInput" placeholder="Email" autocomplete="email" class="inputt" />
+  <input type="password" id="passwordInput" placeholder="Password" autocomplete="current-password" class="inputt" style="margin-top: 20px;"/>
+  <button id="loginBtn" class="in-btnn">Login</button>
   <p id="status"></p>
 
   <!-- Entry point script -->
   <script type="module" src="login.js"></script>
 </body>
+
 </html>
