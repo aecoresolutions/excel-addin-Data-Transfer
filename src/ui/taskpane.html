@@ -1,0 +1,92 @@
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self';
+               child-src 'self' mailto:;
+               connect-src 'self' https://api.cloudconvert.com;
+               script-src 'self' https://* 'unsafe-inline';
+               style-src 'self' 'unsafe-inline'">
+    <title>Excel Add-in Login</title>
+    <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+    <link rel="stylesheet"
+        href="https://res-1.cdn.office.net/files/fabric-cdn-prod_20230815.002/office-ui-fabric-core/11.1.0/css/fabric.min.css" />
+    <link href="../taskpane/taskpane.css" rel="stylesheet" />
+    <script type="module" src="../taskpane/taskpane.js"></script>
+</head>
+
+<body>
+
+    <div id="main-ui" style="display: block;">
+        <h3>Convert Word to PDF</h3>
+        <input type="file" id="uploadDocx" accept=".docx" />
+        <br> <br>
+            <!--     <button onclick="sendEmail()">Send Email</button> <be> <br> -->
+            <button id="convertBtn">Convert to PDF</button>
+            <br> <br>
+                <button id="requestLogout">Request Logout</button>
+                <br> <br>
+                        <button onclick="openWhatsApp()">Contact on WhatsApp</button>
+                        <br> <br>
+
+                    <div id="status"></div>
+    </div>
+
+    <script type="module" src="../taskpane/taskpane.js"></script>
+
+
+</body>
+
+</html>
+<!-- email -->
+<!--   <script>
+function sendEmail() {
+const recipient = "aecoresolutions@gmail.com";
+const subject = encodeURIComponent("Logout Request");
+const body = encodeURIComponent("I would like to log out from the Excel Add-in.");
+
+const mailtoUrl = `mailto:${recipient}?subject=${subject}&body=${body}`;
+window.open(mailtoUrl, "_blank");
+}
+</script> -->
+
+
+<!-- ///////////////////////// -->
+
+<!-- whatsapp -->
+<script>
+function openWhatsApp() {
+window.open("https://wa.link/2zvwid", "_blank");
+}
+</script>
+<!-- //////////////////////////// -->
+
+<!--   <script type="module" src="../../dist/taskpane.js"></script>  -->
+
+
+<!-- 
+<script>
+  async function requestLogout() {
+      const userEmail = localStorage.getItem("uid") || "Unknown User";
+
+      const subject = encodeURIComponent("Logout Request");
+      const body = encodeURIComponent(`${userEmail} has requested to log out from the Excel Add-in.`);
+
+      const mailtoLink = `mailto:support@yourcompany.com?subject=${subject}&body=${body}`;
+
+      // Open user's default mail client
+      window.location.href = mailtoLink;
+
+      // Optional: Clear session locally
+      localStorage.removeItem("uid");
+      localStorage.removeItem("sessionId");
+      location.reload();
+  }
+</script> 
+-->
+
+<!-- Firebase and task scripts -->
+<!-- <script type="module" src="../firebase-auth.js"></script>
+<script type="module" src="taskpane.js"></script> -->
