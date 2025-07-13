@@ -132,11 +132,18 @@ b {
 }
 
 .out-section {
+    padding-left: 15px;
     text-align: center;
     align-self: center;
-    display: grid;
+    /* display: grid; */
     position: absolute;
     justify-content: center;
+    margin-top: 90px;
+}
+
+.p-out-section {
+    font-size: 1rem;
+    margin: 0 0 15px 0;
 }
 
 .out-btnn {
