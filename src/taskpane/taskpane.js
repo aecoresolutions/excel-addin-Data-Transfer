@@ -456,25 +456,20 @@ function buildMappingDict(data) {
 function matchMappedTermsBySection(txt, currentSection, mappingDict, headerMap) {
   const res = {};
   const sectionClean = deepTrim(currentSection);
-  const txtRaw = txt;
-  const txtLower = txt.toLowerCase().replace(/\u200B|\u200C|\u200D|\uFEFF/g, '');
+  const txtNorm = txt.replace(/[\s\u200B-\u200D\uFEFF]/g, '').toUpperCase();
 
-  const normalizedTxt = txtLower.replace(/\s+/g, "");
-
-  console.log("➡️ Line:", txtRaw);
+  console.log("➡️ Line:", txt);
   console.log("📍 Section:", sectionClean);
 
   const sortedHapKeys = Object.keys(mappingDict).sort((a, b) => b.length - a.length);
 
   for (const hapKey of sortedHapKeys) {
-    const hapKeyNormalized = hapKey.toLowerCase().replace(/\s+/g, "");
+    const hapKeyNorm = hapKey.replace(/[\s\u200B-\u200D\uFEFF]/g, '').toUpperCase();
 
-    console.log("🔍 Checking:", hapKey, "→ Normalized:", hapKeyNormalized);
-
-    if (normalizedTxt.includes(hapKeyNormalized)) {
+    if (txtNorm.includes(hapKeyNorm)) {
       console.log(`✅ MATCH: "${hapKey}"`);
 
-      const extracted = extractNumberFromContext(txtRaw, hapKey);
+      const extracted = extractNumberFromContext(txt, hapKey);
       console.log(`🔢 Extracted: "${extracted}"`);
 
       for (const [schedHeader, reqSection] of mappingDict[hapKey]) {
@@ -496,14 +491,15 @@ function matchMappedTermsBySection(txt, currentSection, mappingDict, headerMap) 
         }
       }
 
-      break; // Stop after first match
+      break; // Only match the first valid key per line
     } else {
-      console.log(`❌ No match for: "${hapKey}"`);
+      console.log(`❌ No match: "${hapKey}"`);
     }
   }
 
   return res;
 }
+
 
 
 
