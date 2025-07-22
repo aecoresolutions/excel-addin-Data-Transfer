@@ -465,21 +465,21 @@ function normalizeTerm(term) {
 function matchMappedTermsBySection(txt, currentSection, mappingDict, headerMap) {
   const res = {};
   const sectionClean = deepTrim(currentSection);
-  const txtLower = txt.toLowerCase().replace(/\u200B|\u200C|\u200D|\uFEFF/g, '');
-  const txtNormalized = normalizeTerm(txt);
+  const txtLower = txt.toLowerCase().replace(/[\u200B\u200C\u200D\uFEFF]/g, '');
 
   console.log("➡️ Line:", txt);
   console.log("📍 Section:", sectionClean);
-  console.log("🧼 Normalized Line:", txtNormalized);
 
   const sortedHapKeys = Object.keys(mappingDict).sort((a, b) => b.length - a.length);
 
   for (const hapKey of sortedHapKeys) {
-    const hapKeyNormalized = normalizeTerm(hapKey);
+    const hapKeyLower = hapKey.toLowerCase().trim();
+    const normalizedLine = txtLower.replace(/[^a-z0-9]/gi, '').replace(/\s+/g, '').trim();
+    const normalizedKey = hapKeyLower.replace(/[^a-z0-9]/gi, '').replace(/\s+/g, '').trim();
 
-    console.log("🔍 Checking:", hapKey, "→ Normalized:", hapKeyNormalized);
+    console.log("🔍 Checking:", hapKey, "→ Normalized:", normalizedKey);
 
-    if (txtNormalized.includes(hapKeyNormalized)) {
+    if (normalizedKey && normalizedLine.includes(normalizedKey)) {
       console.log(`✅ MATCH: "${hapKey}"`);
 
       const extracted = extractNumberFromContext(txt, hapKey);
@@ -490,18 +490,12 @@ function matchMappedTermsBySection(txt, currentSection, mappingDict, headerMap) 
         console.log(`🧭 Map to: "${schedHeader}" in section "${reqSectionClean}"`);
 
         if (!reqSection || sectionClean.includes(reqSectionClean)) {
-          const normalizedSchedHeader = normalizeTerm(schedHeader);
-          const headerMapKeysNormalized = Object.keys(headerMap).map(normalizeTerm);
-
-          const matchingKeyIndex = headerMapKeysNormalized.findIndex(h => h === normalizedSchedHeader);
-          const actualHeaderKey = Object.keys(headerMap)[matchingKeyIndex];
-
-          if (actualHeaderKey !== undefined) {
-            res[actualHeaderKey] = schedHeader.includes("POWER")
+          if (headerMap[schedHeader] !== undefined) {
+            res[schedHeader] = schedHeader.includes("POWER")
               ? stdPower(parseFloat(extracted))
               : extracted;
 
-            console.log(`📤 Wrote to res: ${actualHeaderKey} = ${res[actualHeaderKey]}`);
+            console.log(`📤 Wrote to res: ${schedHeader} = ${res[schedHeader]}`);
           } else {
             console.log(`⚠️ Not in headerMap: "${schedHeader}"`);
           }
@@ -510,14 +504,15 @@ function matchMappedTermsBySection(txt, currentSection, mappingDict, headerMap) 
         }
       }
 
-      break; // only take first valid match per line
+      break; // Stop at first match on the line
     } else {
       console.log(`❌ No match for: "${hapKey}"`);
     }
   }
-/////last
+
   return res;
 }
+
 
 
 
