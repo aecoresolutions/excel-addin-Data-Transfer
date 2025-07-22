@@ -464,9 +464,11 @@ function matchMappedTermsBySection(txt, currentSection, mappingDict, headerMap) 
   for (const hapKey of Object.keys(mappingDict)) {
     const hapKeyLower = hapKey.toLowerCase().trim();
 
-    const exactMatchPattern = new RegExp(`^${hapKeyLower.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}(\\s|\\t)`, 'i');
+    // Match whole word boundary, including Unicode symbols like ²
+    const escapedKey = hapKeyLower.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+    const matchPattern = new RegExp(`\\b${escapedKey}\\b`, 'iu'); // 'u' for Unicode support
 
-    if (exactMatchPattern.test(txtLower)) {
+    if (matchPattern.test(txtLower)) {
       console.log(`✅ Match Found for key: "${hapKey}"`);
 
       const extracted = extractNumberFromContext(txt, hapKey);
