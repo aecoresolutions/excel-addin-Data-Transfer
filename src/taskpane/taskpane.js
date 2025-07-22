@@ -444,7 +444,13 @@ function buildHeaderMap(headerRange) {
 function buildMappingDict(data) {
   const mappingDict = {};
   data.slice(2).forEach((row) => {
-    const schedHeader = ((row[0] ? row[0] + "|" : "") + row[1]).toUpperCase().replace(/\s+/g, "");
+    let schedHeader = "";
+    if (row[0] && row[1]) {
+      schedHeader = (row[0] + "|" + row[1]).toUpperCase().replace(/\s+/g, "");
+    } else {
+      schedHeader = (row[0] || row[1] || "").toUpperCase().replace(/\s+/g, "");
+    }
+
     const hapTerm = String(row[3] || "").toUpperCase().trim();
     const section = String(row[2] || "").toUpperCase().trim();
     if (!mappingDict[hapTerm]) mappingDict[hapTerm] = [];
@@ -452,6 +458,7 @@ function buildMappingDict(data) {
   });
   return mappingDict;
 }
+
 
 
 
@@ -502,7 +509,7 @@ function matchMappedTermsBySection(txt, currentSection, mappingDict, headerMap) 
         }
       }
 
-      break; // Stop
+      break; // Stop2
     } else {
       console.log(`❌ No match for: "${hapKey}"`);
     }
