@@ -465,24 +465,23 @@ function normalizeTerm(term) {
 function matchMappedTermsBySection(txt, currentSection, mappingDict, headerMap) {
   const res = {};
   const sectionClean = deepTrim(currentSection);
-  const txtLower = txt.toLowerCase().replace(/[\u200B\u200C\u200D\uFEFF]/g, '');
+  const txtClean = txt.replace(/[\u200B-\u200D\uFEFF]/g, "").trim();
 
-  console.log("➡️ Line:", txt);
+  console.log("➡️ Line:", txtClean);
   console.log("📍 Section:", sectionClean);
 
   const sortedHapKeys = Object.keys(mappingDict).sort((a, b) => b.length - a.length);
+  const lineNormalized = normalizeTerm(txtClean);
 
   for (const hapKey of sortedHapKeys) {
-    const hapKeyLower = hapKey.toLowerCase().trim();
-    const normalizedLine = txtLower.replace(/[^a-z0-9]/gi, '').replace(/\s+/g, '').trim();
-    const normalizedKey = hapKeyLower.replace(/[^a-z0-9]/gi, '').replace(/\s+/g, '').trim();
-
+    const normalizedKey = normalizeTerm(hapKey);
     console.log("🔍 Checking:", hapKey, "→ Normalized:", normalizedKey);
 
-    if (normalizedKey && normalizedLine.includes(normalizedKey)) {
+    // Check individual words as tokens from line
+    if (lineNormalized.includes(normalizedKey)) {
       console.log(`✅ MATCH: "${hapKey}"`);
 
-      const extracted = extractNumberFromContext(txt, hapKey);
+      const extracted = extractNumberFromContext(txtClean, hapKey);
       console.log(`🔢 Extracted: "${extracted}"`);
 
       for (const [schedHeader, reqSection] of mappingDict[hapKey]) {
@@ -494,7 +493,6 @@ function matchMappedTermsBySection(txt, currentSection, mappingDict, headerMap) 
             res[schedHeader] = schedHeader.includes("POWER")
               ? stdPower(parseFloat(extracted))
               : extracted;
-
             console.log(`📤 Wrote to res: ${schedHeader} = ${res[schedHeader]}`);
           } else {
             console.log(`⚠️ Not in headerMap: "${schedHeader}"`);
@@ -504,7 +502,7 @@ function matchMappedTermsBySection(txt, currentSection, mappingDict, headerMap) 
         }
       }
 
-      break; // Stop at first match on the line
+      break; // Stop
     } else {
       console.log(`❌ No match for: "${hapKey}"`);
     }
@@ -512,6 +510,7 @@ function matchMappedTermsBySection(txt, currentSection, mappingDict, headerMap) 
 
   return res;
 }
+
 
 
 
