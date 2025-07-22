@@ -467,9 +467,12 @@ function buildMappingDict(data) {
 function normalizeTerm(term) {
   return (term || "")
     .toString()
-    .replace(/[^a-zA-Z0-9]/g, "") // remove all non-alphanumerics
-    .toLowerCase();              // lowercase
+    .toLowerCase()
+    .replace(/\s+/g, '')        // remove all whitespace
+    .replace(/[^\w]/g, '')      // remove punctuation and non-word characters
+    .trim();
 }
+
 
 
 function matchMappedTermsBySection(txt, currentSection, mappingDict, headerMap) {
@@ -480,10 +483,10 @@ function matchMappedTermsBySection(txt, currentSection, mappingDict, headerMap) 
   console.log("➡️ Line:", txt);
   console.log("📍 Section:", sectionNorm);
 
-  // Process all HAP terms in order of decreasing length for best match
   for (const hapKey of Object.keys(mappingDict).sort((a, b) => b.length - a.length)) {
     const hapKeyNorm = normalizeTerm(hapKey);
 
+    // Allow fuzzy match: remove spaces and compare normalized
     if (txtNorm.includes(hapKeyNorm)) {
       console.log(`✅ Found match for HAP term: "${hapKey}"`);
 
@@ -494,25 +497,17 @@ function matchMappedTermsBySection(txt, currentSection, mappingDict, headerMap) 
         const schedNorm = normalizeTerm(schedHeader);
         const mapSectionNorm = normalizeTerm(mapSection);
 
-        // Section match (either "ALL", blank, or exact section)
+        // Accept match if section is "all", blank, or normalized match
         if (!mapSectionNorm || mapSectionNorm === "all" || sectionNorm.includes(mapSectionNorm)) {
-
-          // If Schedule header is "ALL", use HAP term to find matching Excel header
-          let realHeaderKey = null;
-          if (schedNorm === "all") {
-            realHeaderKey = Object.keys(headerMap).find(
-              (hdr) => normalizeTerm(hdr) === hapKeyNorm
-            );
-          } else {
-            realHeaderKey = Object.keys(headerMap).find(
-              (hdr) => normalizeTerm(hdr) === schedNorm
-            );
-          }
+          const realHeaderKey = Object.keys(headerMap).find(
+            (k) => normalizeTerm(k) === schedNorm
+          );
 
           if (realHeaderKey) {
             result[realHeaderKey] = realHeaderKey.includes("POWER")
               ? stdPower(parseFloat(extracted))
               : extracted;
+
             console.log(`📤 Will write: ${realHeaderKey} = ${result[realHeaderKey]}`);
           } else {
             console.log(`⚠️ Header not found in Excel for: "${schedHeader}"`);
@@ -522,7 +517,7 @@ function matchMappedTermsBySection(txt, currentSection, mappingDict, headerMap) 
         }
       }
 
-      break; // stop after first match
+      break; // sto
     } else {
       console.log(`❌ No match for: "${hapKey}"`);
     }
@@ -530,6 +525,7 @@ function matchMappedTermsBySection(txt, currentSection, mappingDict, headerMap) 
 
   return result;
 }
+
 
 
 
