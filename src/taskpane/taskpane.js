@@ -469,6 +469,8 @@ function matchMappedTermsBySection(txt, currentSection, mappingDict, headerMap) 
   for (const hapKey of sortedHapKeys) {
     const hapKeyNormalized = hapKey.toLowerCase().replace(/\s+/g, "");
 
+    console.log("🔍 Checking:", hapKey, "→ Normalized:", hapKeyNormalized);
+
     if (normalizedTxt.includes(hapKeyNormalized)) {
       console.log(`✅ MATCH: "${hapKey}"`);
 
@@ -494,9 +496,9 @@ function matchMappedTermsBySection(txt, currentSection, mappingDict, headerMap) 
         }
       }
 
-      break; // Stop after first matching hapKey
+      break; // Stop after first match
     } else {
-      console.log(`❌ No match: "${hapKey}"`);
+      console.log(`❌ No match for: "${hapKey}"`);
     }
   }
 
