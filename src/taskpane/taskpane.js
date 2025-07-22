@@ -472,30 +472,35 @@ function normalizeTerm(term) {
 function matchMappedTermsBySection(txt, currentSection, mappingDict, headerMap) {
   const res = {};
   const sectionClean = deepTrim(currentSection);
-  const txtClean = txt.replace(/[\u200B-\u200D\uFEFF]/g, "").trim();
+  const txtLower = txt.toLowerCase().replace(/[\u200B\u200C\u200D\uFEFF]/g, '');
 
-  console.log("➡️ Line:", txtClean);
+  console.log("➡️ Line:", txt);
   console.log("📍 Section:", sectionClean);
 
   const sortedHapKeys = Object.keys(mappingDict).sort((a, b) => b.length - a.length);
-  const lineNormalized = normalizeTerm(txtClean);
+
+  const normalizedLine = txtLower.replace(/[^a-z0-9]/gi, '').replace(/\s+/g, '').trim();
 
   for (const hapKey of sortedHapKeys) {
-    const normalizedKey = normalizeTerm(hapKey);
+    const normalizedKey = hapKey.toLowerCase().replace(/[^a-z0-9]/g, '').trim();
+
     console.log("🔍 Checking:", hapKey, "→ Normalized:", normalizedKey);
 
-    // Check individual words as tokens from line
-    if (lineNormalized.includes(normalizedKey)) {
+    if (normalizedKey && normalizedLine.includes(normalizedKey)) {
       console.log(`✅ MATCH: "${hapKey}"`);
 
-      const extracted = extractNumberFromContext(txtClean, hapKey);
+      const extracted = extractNumberFromContext(txt, hapKey);
       console.log(`🔢 Extracted: "${extracted}"`);
 
       for (const [schedHeader, reqSection] of mappingDict[hapKey]) {
         const reqSectionClean = deepTrim(reqSection || "");
-        console.log(`🧭 Map to: "${schedHeader}" in section "${reqSectionClean}"`);
 
-        if (!reqSection || sectionClean.includes(reqSectionClean)) {
+        // 🔄 Accept if "ALL" is set or section matches
+        const isMatch = !reqSectionClean || sectionClean.includes(reqSectionClean) || reqSectionClean === "ALL";
+
+        console.log(`🧭 Map to: "${schedHeader}" in section "${reqSectionClean}" | isMatch: ${isMatch}`);
+
+        if (isMatch) {
           if (headerMap[schedHeader] !== undefined) {
             res[schedHeader] = schedHeader.includes("POWER")
               ? stdPower(parseFloat(extracted))
@@ -509,7 +514,7 @@ function matchMappedTermsBySection(txt, currentSection, mappingDict, headerMap) 
         }
       }
 
-      break; // Stop2
+      break; // only
     } else {
       console.log(`❌ No match for: "${hapKey}"`);
     }
@@ -517,6 +522,7 @@ function matchMappedTermsBySection(txt, currentSection, mappingDict, headerMap) 
 
   return res;
 }
+
 
 
 
