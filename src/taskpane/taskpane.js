@@ -480,10 +480,10 @@ function matchMappedTermsBySection(txt, currentSection, mappingDict, headerMap) 
   console.log("➡️ Line:", txt);
   console.log("📍 Section:", sectionNorm);
 
+  // Process all HAP terms in order of decreasing length for best match
   for (const hapKey of Object.keys(mappingDict).sort((a, b) => b.length - a.length)) {
     const hapKeyNorm = normalizeTerm(hapKey);
 
-    // Try to match whole term, regardless of spacing or casing
     if (txtNorm.includes(hapKeyNorm)) {
       console.log(`✅ Found match for HAP term: "${hapKey}"`);
 
@@ -494,12 +494,20 @@ function matchMappedTermsBySection(txt, currentSection, mappingDict, headerMap) 
         const schedNorm = normalizeTerm(schedHeader);
         const mapSectionNorm = normalizeTerm(mapSection);
 
-        // If section is empty or matches current
+        // Section match (either "ALL", blank, or exact section)
         if (!mapSectionNorm || mapSectionNorm === "all" || sectionNorm.includes(mapSectionNorm)) {
-          // Find actual key from headerMap using normalized form
-          const realHeaderKey = Object.keys(headerMap).find(
-            (k) => normalizeTerm(k) === schedNorm
-          );
+
+          // If Schedule header is "ALL", use HAP term to find matching Excel header
+          let realHeaderKey = null;
+          if (schedNorm === "all") {
+            realHeaderKey = Object.keys(headerMap).find(
+              (hdr) => normalizeTerm(hdr) === hapKeyNorm
+            );
+          } else {
+            realHeaderKey = Object.keys(headerMap).find(
+              (hdr) => normalizeTerm(hdr) === schedNorm
+            );
+          }
 
           if (realHeaderKey) {
             result[realHeaderKey] = realHeaderKey.includes("POWER")
