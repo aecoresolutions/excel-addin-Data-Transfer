@@ -444,17 +444,15 @@ function buildHeaderMap(headerRange) {
 function buildMappingDict(data) {
   const mappingDict = {};
   data.slice(2).forEach((row) => {
-    let schedHeader = "";
-    if (row[0] && row[1]) {
-      schedHeader = (row[0] + "|" + row[1]).toUpperCase().replace(/\s+/g, "");
-    } else {
-      schedHeader = (row[0] || row[1] || "").toUpperCase().replace(/\s+/g, "");
-    }
+    const schedHeader = ((row[0] ? row[0] + "|" : "") + row[1]).toUpperCase().replace(/\s+/g, "");
+    const hapTerm = String(row[3] || "").trim();
+    const section = String(row[2] || "").trim();
 
-    const hapTerm = String(row[3] || "").toUpperCase().trim();
-    const section = String(row[2] || "").toUpperCase().trim();
-    if (!mappingDict[hapTerm]) mappingDict[hapTerm] = [];
-    mappingDict[hapTerm].push([schedHeader, section]);
+    if (!hapTerm) return; // 🚫 Ignore empty keys
+
+    const normHap = hapTerm.toUpperCase();
+    if (!mappingDict[normHap]) mappingDict[normHap] = [];
+    mappingDict[normHap].push([schedHeader, section]);
   });
   return mappingDict;
 }
@@ -468,8 +466,8 @@ function normalizeTerm(term) {
   return (term || "")
     .toString()
     .toLowerCase()
-    .replace(/\s+/g, '')        // remove all whitespace
-    .replace(/[^\w]/g, '')      // remove punctuation and non-word characters
+    .replace(/\s+/g, '')        // remove spaces
+    .replace(/[^\w]/g, '')      // remove punctuation/symbols
     .trim();
 }
 
@@ -484,11 +482,13 @@ function matchMappedTermsBySection(txt, currentSection, mappingDict, headerMap) 
   console.log("📍 Section:", sectionNorm);
 
   for (const hapKey of Object.keys(mappingDict).sort((a, b) => b.length - a.length)) {
+    if (!hapKey) continue; // 🚫 Skip empty keys
+
     const hapKeyNorm = normalizeTerm(hapKey);
 
-    // Allow fuzzy match: remove spaces and compare normalized
+    // First try normalized match
     if (txtNorm.includes(hapKeyNorm)) {
-      console.log(`✅ Found match for HAP term: "${hapKey}"`);
+      console.log(`✅ Found match for HAP term: "${hapKey}" → norm: ${hapKeyNorm}`);
 
       const extracted = extractNumberFromContext(txt, hapKey);
       console.log(`🔢 Extracted: "${extracted}"`);
@@ -497,7 +497,6 @@ function matchMappedTermsBySection(txt, currentSection, mappingDict, headerMap) 
         const schedNorm = normalizeTerm(schedHeader);
         const mapSectionNorm = normalizeTerm(mapSection);
 
-        // Accept match if section is "all", blank, or normalized match
         if (!mapSectionNorm || mapSectionNorm === "all" || sectionNorm.includes(mapSectionNorm)) {
           const realHeaderKey = Object.keys(headerMap).find(
             (k) => normalizeTerm(k) === schedNorm
@@ -517,14 +516,15 @@ function matchMappedTermsBySection(txt, currentSection, mappingDict, headerMap) 
         }
       }
 
-      break; // sto
+      break; // stop after
     } else {
-      console.log(`❌ No match for: "${hapKey}"`);
+      console.log(`❌ No match for: "${hapKey}" → norm: ${hapKeyNorm}`);
     }
   }
 
   return result;
 }
+
 
 
 
