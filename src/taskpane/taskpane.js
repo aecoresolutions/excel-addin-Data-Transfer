@@ -456,27 +456,28 @@ function buildMappingDict(data) {
 function matchMappedTermsBySection(txt, currentSection, mappingDict, headerMap) {
   const res = {};
   const sectionClean = deepTrim(currentSection);
-  const txtLower = txt.toLowerCase();
+  const txtRaw = txt;
+  const txtLower = txt.toLowerCase().replace(/\u200B|\u200C|\u200D|\uFEFF/g, '');
 
-  console.log("➡️ New Line:", txt);
-  console.log("📍 Current Section:", sectionClean);
+  const normalizedTxt = txtLower.replace(/\s+/g, "");
 
-  for (const hapKey of Object.keys(mappingDict)) {
-    const hapKeyLower = hapKey.toLowerCase().trim();
+  console.log("➡️ Line:", txtRaw);
+  console.log("📍 Section:", sectionClean);
 
-    // Match whole word boundary, including Unicode symbols like ²
-    const escapedKey = hapKeyLower.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
-    const matchPattern = new RegExp(`\\b${escapedKey}\\b`, 'iu'); // 'u' for Unicode support
+  const sortedHapKeys = Object.keys(mappingDict).sort((a, b) => b.length - a.length);
 
-    if (matchPattern.test(txtLower)) {
-      console.log(`✅ Match Found for key: "${hapKey}"`);
+  for (const hapKey of sortedHapKeys) {
+    const hapKeyNormalized = hapKey.toLowerCase().replace(/\s+/g, "");
 
-      const extracted = extractNumberFromContext(txt, hapKey);
-      console.log(`🔢 Extracted Value: "${extracted}"`);
+    if (normalizedTxt.includes(hapKeyNormalized)) {
+      console.log(`✅ MATCH: "${hapKey}"`);
+
+      const extracted = extractNumberFromContext(txtRaw, hapKey);
+      console.log(`🔢 Extracted: "${extracted}"`);
 
       for (const [schedHeader, reqSection] of mappingDict[hapKey]) {
         const reqSectionClean = deepTrim(reqSection || "");
-        console.log(`🧭 Mapping to: "${schedHeader}" in section: "${reqSectionClean}"`);
+        console.log(`🧭 Map to: "${schedHeader}" in section "${reqSectionClean}"`);
 
         if (!reqSection || sectionClean.includes(reqSectionClean)) {
           if (headerMap[schedHeader] !== undefined) {
@@ -484,19 +485,24 @@ function matchMappedTermsBySection(txt, currentSection, mappingDict, headerMap) 
               ? stdPower(parseFloat(extracted))
               : extracted;
 
-            console.log(`📤 Stored in res: ${schedHeader} = ${res[schedHeader]}`);
+            console.log(`📤 Wrote to res: ${schedHeader} = ${res[schedHeader]}`);
           } else {
-            console.log(`⚠️ "${schedHeader}" not found in headerMap`);
+            console.log(`⚠️ Not in headerMap: "${schedHeader}"`);
           }
         } else {
-          console.log(`🚫 Section mismatch: required "${reqSectionClean}", current "${sectionClean}"`);
+          console.log(`🚫 Section mismatch: "${reqSectionClean}" vs "${sectionClean}"`);
         }
       }
+
+      break; // Stop after first matching hapKey
+    } else {
+      console.log(`❌ No match: "${hapKey}"`);
     }
   }
 
   return res;
 }
+
 
 
 
