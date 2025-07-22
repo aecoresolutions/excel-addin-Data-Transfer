@@ -463,20 +463,21 @@ function buildMappingDict(data) {
 
 
 function normalizeTerm(term) {
+  if (typeof term === "string" && term.toLowerCase().includes("actual max cfm")) {
+    console.log("🔍 Raw match success for 'Actual max CFM'");
+  }
   return (term || "")
     .toString()
     .toLowerCase()
-    .replace(/\s+/g, '')        // remove spaces
-    .replace(/[^\w]/g, '')      // remove punctuation/symbols
+    .replace(/[\s\t]+/g, '')       // remove all spacing including tabs
+    .replace(/[^\w]/g, '')         // remove punctuation
     .trim();
 }
 
-
-
 function matchMappedTermsBySection(txt, currentSection, mappingDict, headerMap) {
   const result = {};
-  const sectionNorm = normalizeTerm(currentSection);
   const txtNorm = normalizeTerm(txt);
+  const sectionNorm = normalizeTerm(currentSection);
 
   console.log("➡️ Line:", txt);
   console.log("📍 Section:", sectionNorm);
@@ -485,6 +486,15 @@ function matchMappedTermsBySection(txt, currentSection, mappingDict, headerMap) 
     if (!hapKey) continue; // 🚫 Skip empty keys
 
     const hapKeyNorm = normalizeTerm(hapKey);
+
+    if (hapKeyNorm === "actualmaxcfm") {
+      console.log("👀 Looking for 'actualmaxcfm' in line...");
+      if (txtNorm.includes("actualmaxcfm")) {
+        console.log("🎯 YES! Found manually.");
+      } else {
+        console.warn("❌ NOT found — mismatch between term and line.");
+      }
+    }
 
     // First try normalized match
     if (txtNorm.includes(hapKeyNorm)) {
@@ -516,7 +526,7 @@ function matchMappedTermsBySection(txt, currentSection, mappingDict, headerMap) 
         }
       }
 
-      break; // stop after
+      break; //match
     } else {
       console.log(`❌ No match for: "${hapKey}" → norm: ${hapKeyNorm}`);
     }
