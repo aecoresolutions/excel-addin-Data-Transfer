@@ -463,42 +463,33 @@ function buildMappingDict(data) {
 
 
 function normalizeTerm(term) {
-  if (typeof term === "string" && term.toLowerCase().includes("actual max cfm")) {
-    console.log("🔍 Raw match success for 'Actual max CFM'");
-  }
   return (term || "")
     .toString()
     .toLowerCase()
-    .replace(/[\s\t]+/g, '')       // remove all spacing including tabs
-    .replace(/[^\w]/g, '')         // remove punctuation
+    .replace(/\s+/g, '')     // remove spaces
+    .replace(/[^\w]/g, '')   // remove non-word chars
     .trim();
 }
 
+
 function matchMappedTermsBySection(txt, currentSection, mappingDict, headerMap) {
   const result = {};
-  const txtNorm = normalizeTerm(txt);
   const sectionNorm = normalizeTerm(currentSection);
+  const txtNorm = normalizeTerm(txt);
 
   console.log("➡️ Line:", txt);
   console.log("📍 Section:", sectionNorm);
 
   for (const hapKey of Object.keys(mappingDict).sort((a, b) => b.length - a.length)) {
-    if (!hapKey) continue; // 🚫 Skip empty keys
+    if (!hapKey) continue;
 
     const hapKeyNorm = normalizeTerm(hapKey);
 
-    if (hapKeyNorm === "actualmaxcfm") {
-      console.log("👀 Looking for 'actualmaxcfm' in line...");
-      if (txtNorm.includes("actualmaxcfm")) {
-        console.log("🎯 YES! Found manually.");
-      } else {
-        console.warn("❌ NOT found — mismatch between term and line.");
-      }
-    }
+    const rawCheck = txt.toLowerCase().includes(hapKey.toLowerCase());
+    const normCheck = txtNorm.includes(hapKeyNorm);
 
-    // First try normalized match
-    if (txtNorm.includes(hapKeyNorm)) {
-      console.log(`✅ Found match for HAP term: "${hapKey}" → norm: ${hapKeyNorm}`);
+    if (rawCheck || normCheck) {
+      console.log(`✅ MATCH: "${hapKey}" | raw: ${rawCheck}, norm: ${normCheck}`);
 
       const extracted = extractNumberFromContext(txt, hapKey);
       console.log(`🔢 Extracted: "${extracted}"`);
@@ -517,16 +508,16 @@ function matchMappedTermsBySection(txt, currentSection, mappingDict, headerMap) 
               ? stdPower(parseFloat(extracted))
               : extracted;
 
-            console.log(`📤 Will write: ${realHeaderKey} = ${result[realHeaderKey]}`);
+            console.log(`📤 Writing: ${realHeaderKey} = ${result[realHeaderKey]}`);
           } else {
-            console.log(`⚠️ Header not found in Excel for: "${schedHeader}"`);
+            console.log(`⚠️ Excel header not found: "${schedHeader}"`);
           }
         } else {
           console.log(`🚫 Section mismatch: Need "${mapSection}", Got "${currentSection}"`);
         }
       }
 
-      break; //match
+      break; // match only once
     } else {
       console.log(`❌ No match for: "${hapKey}" → norm: ${hapKeyNorm}`);
     }
