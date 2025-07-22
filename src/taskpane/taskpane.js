@@ -457,17 +457,18 @@ function matchMappedTermsBySection(txt, currentSection, mappingDict, headerMap) 
   const res = {};
   const sectionClean = deepTrim(currentSection);
 
-  // Normalize txt by removing spaces and invisible characters
-  const txtNorm = txt.replace(/[\\s\\u200B-\\u200D\\uFEFF\\t\\r\\n]/g, '').toUpperCase();
+  // Normalize the entire input text line to remove all non-alphanumeric characters
+  const normalize = (s) => (s || "").toUpperCase().replace(/[^A-Z0-9]/gi, "");
 
+  const txtNorm = normalize(txt);
   console.log("➡️ Line:", txt);
   console.log("📍 Section:", sectionClean);
+  console.log("🧼 Normalized Line:", txtNorm);
 
   const sortedHapKeys = Object.keys(mappingDict).sort((a, b) => b.length - a.length);
 
   for (const hapKey of sortedHapKeys) {
-    const hapKeyNorm = hapKey.replace(/[\\s\\u200B-\\u200D\\uFEFF\\/\\t\\r\\n²]/g, '').toUpperCase();
-
+    const hapKeyNorm = normalize(hapKey);
     console.log(`🔍 Checking: ${hapKey} → Normalized: ${hapKeyNorm}`);
 
     if (txtNorm.includes(hapKeyNorm)) {
@@ -494,7 +495,7 @@ function matchMappedTermsBySection(txt, currentSection, mappingDict, headerMap) 
           console.log(`🚫 Section mismatch: "${reqSectionClean}" vs "${sectionClean}"`);
         }
       }
-
+////editt
       break;
     } else {
       console.log(`❌ No match for: "${hapKey}"`);
@@ -503,6 +504,7 @@ function matchMappedTermsBySection(txt, currentSection, mappingDict, headerMap) 
 
   return res;
 }
+
 
 
 
