@@ -453,25 +453,33 @@ function buildMappingDict(data) {
   return mappingDict;
 }
 
+
+
+
+
+function normalizeTerm(term) {
+  // Removes all non-alphanumeric characters and lowercases the term
+  return (term || "").replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+}
+
 function matchMappedTermsBySection(txt, currentSection, mappingDict, headerMap) {
   const res = {};
   const sectionClean = deepTrim(currentSection);
+  const txtLower = txt.toLowerCase().replace(/\u200B|\u200C|\u200D|\uFEFF/g, '');
+  const txtNormalized = normalizeTerm(txt);
 
-  // Normalize the entire input text line to remove all non-alphanumeric characters
-  const normalize = (s) => (s || "").toUpperCase().replace(/[^A-Z0-9]/gi, "");
-
-  const txtNorm = normalize(txt);
   console.log("➡️ Line:", txt);
   console.log("📍 Section:", sectionClean);
-  console.log("🧼 Normalized Line:", txtNorm);
+  console.log("🧼 Normalized Line:", txtNormalized);
 
   const sortedHapKeys = Object.keys(mappingDict).sort((a, b) => b.length - a.length);
 
   for (const hapKey of sortedHapKeys) {
-    const hapKeyNorm = normalize(hapKey);
-    console.log(`🔍 Checking: ${hapKey} → Normalized: ${hapKeyNorm}`);
+    const hapKeyNormalized = normalizeTerm(hapKey);
 
-    if (txtNorm.includes(hapKeyNorm)) {
+    console.log("🔍 Checking:", hapKey, "→ Normalized:", hapKeyNormalized);
+
+    if (txtNormalized.includes(hapKeyNormalized)) {
       console.log(`✅ MATCH: "${hapKey}"`);
 
       const extracted = extractNumberFromContext(txt, hapKey);
@@ -482,12 +490,18 @@ function matchMappedTermsBySection(txt, currentSection, mappingDict, headerMap) 
         console.log(`🧭 Map to: "${schedHeader}" in section "${reqSectionClean}"`);
 
         if (!reqSection || sectionClean.includes(reqSectionClean)) {
-          if (headerMap[schedHeader] !== undefined) {
-            res[schedHeader] = schedHeader.includes("POWER")
+          const normalizedSchedHeader = normalizeTerm(schedHeader);
+          const headerMapKeysNormalized = Object.keys(headerMap).map(normalizeTerm);
+
+          const matchingKeyIndex = headerMapKeysNormalized.findIndex(h => h === normalizedSchedHeader);
+          const actualHeaderKey = Object.keys(headerMap)[matchingKeyIndex];
+
+          if (actualHeaderKey !== undefined) {
+            res[actualHeaderKey] = schedHeader.includes("POWER")
               ? stdPower(parseFloat(extracted))
               : extracted;
 
-            console.log(`📤 Wrote to res: ${schedHeader} = ${res[schedHeader]}`);
+            console.log(`📤 Wrote to res: ${actualHeaderKey} = ${res[actualHeaderKey]}`);
           } else {
             console.log(`⚠️ Not in headerMap: "${schedHeader}"`);
           }
@@ -495,13 +509,13 @@ function matchMappedTermsBySection(txt, currentSection, mappingDict, headerMap) 
           console.log(`🚫 Section mismatch: "${reqSectionClean}" vs "${sectionClean}"`);
         }
       }
-////editt
-      break;
+
+      break; // only take first valid match per line
     } else {
       console.log(`❌ No match for: "${hapKey}"`);
     }
   }
-
+/////last
   return res;
 }
 
