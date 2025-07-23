@@ -297,6 +297,7 @@ Office.onReady((info) => {
     document.getElementById("selectHeader").onclick = selectHeader;
     document.getElementById("uploadRtf").onchange = handleRtfUpload;
     document.getElementById("importRtf").onclick = importRtfToExcel;
+    document.getElementById("requestLogout").onclick = requestLogout;
   }
 });
 
