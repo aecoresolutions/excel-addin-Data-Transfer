@@ -124,6 +124,11 @@ b {
     color: #00589C;
     border-color: #00589C;
 }
+.btnn-select:hover{
+    background-color: rgb(239 246 255);
+    color: #00589C;
+    border-color: #00589C;
+}
 
 .in-btnn {
     border: 2px solid;
