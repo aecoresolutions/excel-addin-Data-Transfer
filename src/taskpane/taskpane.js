@@ -288,6 +288,7 @@ import {
 
 
 
+
 let headerRange = null;
 let rtfTextContent = null;
 
@@ -299,7 +300,7 @@ Office.onReady((info) => {
   }
 });
 
-   function showMessage(msg) {
+function showMessage(msg) {
   const el = document.getElementById("messageBox");
   if (el) el.textContent = msg;
   console.log("MESSAGE:", msg);
@@ -445,104 +446,34 @@ function buildMappingDict(data) {
   const mappingDict = {};
   data.slice(2).forEach((row) => {
     const schedHeader = ((row[0] ? row[0] + "|" : "") + row[1]).toUpperCase().replace(/\s+/g, "");
-    const hapTerm = String(row[3] || "").trim();
-    const section = String(row[2] || "").trim();
-
-    if (!hapTerm) return; // 🚫 Ignore empty keys
-
-    const normHap = hapTerm.toUpperCase();
-    if (!mappingDict[normHap]) mappingDict[normHap] = [];
-    mappingDict[normHap].push([schedHeader, section]);
+    const hapTerm = String(row[3] || "").toUpperCase().trim();
+    const section = String(row[2] || "").toUpperCase().trim();
+    if (!mappingDict[hapTerm]) mappingDict[hapTerm] = [];
+    mappingDict[hapTerm].push([schedHeader, section]);
   });
   return mappingDict;
 }
 
-
-
-
-
-
-function normalizeTerm(term) {
-  return (term || "")
-    .toString()
-    .toLowerCase()
-    .replace(/\s+/g, '')     // remove spaces
-    .replace(/[^\w]/g, '')   // remove non-word chars
-    .trim();
-}
-
-
 function matchMappedTermsBySection(txt, currentSection, mappingDict, headerMap) {
-  const result = {};
-  const sectionNorm = normalizeTerm(currentSection);
-  const txtNorm = normalizeTerm(txt);
-
-  console.log("➡️ Line:", txt);
-  console.log("📍 Section:", sectionNorm);
-
-  for (const hapKey of Object.keys(mappingDict).sort((a, b) => b.length - a.length)) {
-    if (!hapKey) continue;
-
-    const hapKeyNorm = normalizeTerm(hapKey);
-
-    const rawCheck = txt.toLowerCase().includes(hapKey.toLowerCase());
-    const normCheck = txtNorm.includes(hapKeyNorm);
-
-    if (rawCheck || normCheck) {
-      console.log(`✅ MATCH: "${hapKey}" | raw: ${rawCheck}, norm: ${normCheck}`);
-
+  const res = {};
+  const clean = txt.toLowerCase();
+  const sectionClean = deepTrim(currentSection);
+  for (const hapKey of Object.keys(mappingDict)) {
+    const hapKeyLower = hapKey.toLowerCase().trim();
+    if (clean.includes(hapKeyLower)) {
       const extracted = extractNumberFromContext(txt, hapKey);
-      console.log(`🔢 Extracted: "${extracted}"`);
-
-      for (const [schedHeader, mapSection] of mappingDict[hapKey]) {
-        const schedNorm = normalizeTerm(schedHeader);
-        const mapSectionNorm = normalizeTerm(mapSection);
-
-        if (!mapSectionNorm || mapSectionNorm === "all" || sectionNorm.includes(mapSectionNorm)) {
-          const realHeaderKey = Object.keys(headerMap).find(
-            (k) => normalizeTerm(k) === schedNorm
-          );
-
-          if (realHeaderKey) {
-            result[realHeaderKey] = realHeaderKey.includes("POWER")
-              ? stdPower(parseFloat(extracted))
-              : extracted;
-
-            console.log(`📤 Writing: ${realHeaderKey} = ${result[realHeaderKey]}`);
-          } else {
-            console.log(`⚠️ Excel header not found: "${schedHeader}"`);
+      for (const [schedHeader, reqSection] of mappingDict[hapKey]) {
+        const reqSectionClean = deepTrim(reqSection);
+        if (!reqSection || sectionClean.includes(reqSectionClean)) {
+          if (headerMap[schedHeader] !== undefined) {
+            res[schedHeader] = schedHeader.includes("POWER") ? stdPower(parseFloat(extracted)) : extracted;
           }
-        } else {
-          console.log(`🚫 Section mismatch: Need "${mapSection}", Got "${currentSection}"`);
         }
       }
-
-      break; // match only once
-    } else {
-      console.log(`❌ No match for: "${hapKey}" → norm: ${hapKeyNorm}`);
     }
   }
-
-  return result;
+  return res;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 function extractNumberFromContext(text, keyword) {
   const index = text.toLowerCase().indexOf(keyword.toLowerCase());
@@ -552,8 +483,8 @@ function extractNumberFromContext(text, keyword) {
   const pairMatch = after.match(/\d+\.\d+\s*\/\s*\d+\.\d+/);
   if (pairMatch) return pairMatch[0];
 
-  const valueMatch = after.match(/^[-+]?\d*\.?\d+/);
-  if (valueMatch) return valueMatch[0];
+  const numMatch = after.match(/^([-+]?[0-9]*\.?[0-9]+)/);
+  if (numMatch) return numMatch[1];
 
   const allNums = text.match(/([-+]?[0-9]*\.?[0-9]+)/g);
   return allNums ? allNums[allNums.length - 1] : "";
@@ -572,30 +503,22 @@ function writeRow(sheet, headerMap, row, data) {
   let hasNonEmptyValue = false;
 
   for (const key in data) {
-    const normKey = normalizeTerm(key);
-    const matchedHeaderKey = Object.keys(headerMap).find(
-      (h) => normalizeTerm(h) === normKey
-    );
-
-    if (matchedHeaderKey !== undefined) {
-      const colIndex = headerMap[matchedHeaderKey];
+    const normKey = key.toUpperCase().replace(/\s+/g, '');
+    const colIndex = headerMap[normKey];
+    if (colIndex !== undefined) {
       const relativeIndex = colIndex - startCol;
       const value = data[key];
-
       if (value !== "" && value !== null && value !== undefined) {
         rowValues[relativeIndex] = value;
         hasNonEmptyValue = true;
-        console.log(`📝 Writing "${value}" to column "${matchedHeaderKey}" (col ${relativeIndex})`);
       }
-    } else {
-      console.log(`⚠️ No matching header found in Excel for "${key}"`);
     }
   }
 
   if (hasNonEmptyValue) {
     const range = sheet.getRangeByIndexes(row, startCol, 1, rowValues.length);
     range.values = [rowValues];
-    console.log(`✅ Row ${row} written:`, rowValues);
+    console.log(`✅ Writing to row ${row}:`, rowValues);
     return true;
   } else {
     console.log(`⛔ Skipped empty row ${row}`);
