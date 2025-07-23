@@ -307,12 +307,6 @@ function showMessage(msg) {
   console.log("MESSAGE:", msg);
 }
 
-const logoutBtn = document.getElementById("requestLogout");
-  if (logoutBtn) {
-    logoutBtn.addEventListener("click", requestLogout);
-    console.log("Logout button event listener attached.");
-  }
-
 
 function deepTrim(str = "") {
   return str.replace(/\s+/g, "").replace(/[\u200B-\u200D\uFEFF]/g, "").toUpperCase();
