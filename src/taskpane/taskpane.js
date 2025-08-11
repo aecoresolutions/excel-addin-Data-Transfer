@@ -454,60 +454,90 @@ function buildMappingDict(data) {
   return mappingDict;
 }
 
-function matchMappedTermsBySection(txt, currentSection, mappingDict, headerMap) {
-  const res = {};
-  const clean = txt.toLowerCase();
-  const sectionClean = deepTrim(currentSection);
-  
-  // Check each term in the mapping dictionary
-  for (const hapKey of Object.keys(mappingDict)) {
-    const hapKeyLower = hapKey.toLowerCase().trim();
+/**
+ * Extracts values from RTF content lines with more precise matching
+ * @param {string} text - The text line from RTF
+ * @param {string} currentSection - Current section name
+ * @param {Object} mappingDict - Mapping dictionary
+ * @param {Object} headerMap - Header column mapping
+ * @returns {Object} Matched values with their corresponding headers
+ */
+function matchMappedTermsBySection(text, currentSection, mappingDict, headerMap) {
+    const res = {};
+    const sectionClean = deepTrim(currentSection);
     
-    // Only match if the term appears as a whole word (preceded by space or start of string)
-    // and followed by space, punctuation or end of string
-    const termRegex = new RegExp(`(^|\\s)${escapeRegExp(hapKeyLower)}(?=\\s|\\p{P}|$)`, 'u');
-    if (termRegex.test(clean)) {
-      // Extract the numeric value associated with this term
-      const extracted = extractNumberFromContext(txt, hapKey);
-      
-      // Check all mappings for this term
-      for (const [schedHeader, reqSection] of mappingDict[hapKey]) {
-        const reqSectionClean = deepTrim(reqSection);
-        // If section matches (or no section specified)
-        if (!reqSection || sectionClean.includes(reqSectionClean)) {
-          if (headerMap[schedHeader] !== undefined) {
-            // Standardize power values if needed
-            res[schedHeader] = schedHeader.includes("POWER") ? stdPower(parseFloat(extracted)) : extracted;
-          }
+    // Process each mapping term
+    for (const [hapTerm, mappings] of Object.entries(mappingDict)) {
+        // Skip if term isn't in this line (case insensitive)
+        if (!text.toLowerCase().includes(hapTerm.toLowerCase())) continue;
+        
+        // Special handling for CFM and CFM/ft² to prevent overlap
+        if (hapTerm.toUpperCase() === "ACTUAL MAX CFM/FT²") {
+            const match = text.match(/Actual max CFM\/ft²\s*\.+\s*([\d.]+)/i);
+            if (match) {
+                const value = match[1];
+                for (const [schedHeader, reqSection] of mappings) {
+                    if (headerMap[schedHeader] !== undefined && 
+                        (!reqSection || sectionClean.includes(deepTrim(reqSection)))) {
+                        res[schedHeader] = value;
+                    }
+                }
+            }
+            continue;
         }
-      }
+        
+        if (hapTerm.toUpperCase() === "ACTUAL MAX CFM") {
+            const match = text.match(/Actual max CFM\s*\.+\s*([\d.]+)/i);
+            if (match) {
+                const value = match[1];
+                for (const [schedHeader, reqSection] of mappings) {
+                    if (headerMap[schedHeader] !== undefined && 
+                        (!reqSection || sectionClean.includes(deepTrim(reqSection)))) {
+                        res[schedHeader] = value;
+                    }
+                }
+            }
+            continue;
+        }
+        
+        // Default handling for other terms
+        const extracted = extractNumberFromContext(text, hapTerm);
+        if (extracted) {
+            for (const [schedHeader, reqSection] of mappings) {
+                if (headerMap[schedHeader] !== undefined && 
+                    (!reqSection || sectionClean.includes(deepTrim(reqSection)))) {
+                    res[schedHeader] = schedHeader.includes("POWER") ? stdPower(parseFloat(extracted)) : extracted;
+                }
+            }
+        }
     }
-  }
-  return res;
+    return res;
 }
 
 /**
- * Escapes special regex characters in a string
- * @param {string} string - The string to escape
- * @returns {string} The escaped string
+ * Improved number extraction that handles dotted patterns
+ * @param {string} text - Text to search
+ * @param {string} keyword - Keyword to find
+ * @returns {string} Extracted number
  */
-function escapeRegExp(string) {
-  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
 function extractNumberFromContext(text, keyword) {
-  const index = text.toLowerCase().indexOf(keyword.toLowerCase());
-  if (index === -1) return "";
-  const after = text.slice(index + keyword.length).trim();
-
-  const pairMatch = after.match(/\d+\.\d+\s*\/\s*\d+\.\d+/);
-  if (pairMatch) return pairMatch[0];
-
-  const numMatch = after.match(/^([-+]?[0-9]*\.?[0-9]+)/);
-  if (numMatch) return numMatch[1];
-
-  const allNums = text.match(/([-+]?[0-9]*\.?[0-9]+)/g);
-  return allNums ? allNums[allNums.length - 1] : "";
+    // First try to match the pattern "keyword ...... number"
+    const dottedPattern = new RegExp(`${escapeRegExp(keyword)}\\s*\\.+\\s*([\\d.]+)`, 'i');
+    const dottedMatch = text.match(dottedPattern);
+    if (dottedMatch) return dottedMatch[1];
+    
+    // Then try number pairs
+    const pairMatch = text.match(/\d+\.\d+\s*\/\s*\d+\.\d+/);
+    if (pairMatch) return pairMatch[0];
+    
+    // Then try single numbers after keyword
+    const afterKeyword = text.slice(text.toLowerCase().indexOf(keyword.toLowerCase()) + keyword.length;
+    const numMatch = afterKeyword.match(/([-+]?[0-9]*\.?[0-9]+)/);
+    if (numMatch) return numMatch[1];
+    
+    // Fallback to last number in text
+    const allNums = text.match(/([-+]?[0-9]*\.?[0-9]+)/g);
+    return allNums ? allNums[allNums.length - 1] : "";
 }
 
 function stdPower(value) {
