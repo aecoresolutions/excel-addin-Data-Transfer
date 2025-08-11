@@ -465,35 +465,36 @@ function buildMappingDict(data) {
 function matchMappedTermsBySection(text, currentSection, mappingDict, headerMap) {
     const res = {};
     const sectionClean = deepTrim(currentSection);
+    const textUpper = text.toUpperCase();
     
     // Process each mapping term
     for (const [hapTerm, mappings] of Object.entries(mappingDict)) {
-        // Skip if term isn't in this line (case insensitive)
-        if (!text.toLowerCase().includes(hapTerm.toLowerCase())) continue;
+        const hapTermUpper = hapTerm.toUpperCase();
         
-        // Special handling for CFM and CFM/ft² to prevent overlap
-        if (hapTerm.toUpperCase() === "ACTUAL MAX CFM/FT²") {
-            const match = text.match(/Actual max CFM\/ft²\s*\.+\s*([\d.]+)/i);
-            if (match) {
-                const value = match[1];
+        // Skip if term isn't in this line (case insensitive)
+        if (!textUpper.includes(hapTermUpper)) continue;
+        
+        // Special handling for CFM values
+        if (hapTermUpper === "ACTUAL MAX CFM/FT²") {
+            const match = text.match(/Actual max CFM\/ft²\s*[\.…]+\s*([\d.]+)/i);
+            if (match && match[1]) {
                 for (const [schedHeader, reqSection] of mappings) {
                     if (headerMap[schedHeader] !== undefined && 
                         (!reqSection || sectionClean.includes(deepTrim(reqSection)))) {
-                        res[schedHeader] = value;
+                        res[schedHeader] = match[1];
                     }
                 }
             }
             continue;
         }
         
-        if (hapTerm.toUpperCase() === "ACTUAL MAX CFM") {
-            const match = text.match(/Actual max CFM\s*\.+\s*([\d.]+)/i);
-            if (match) {
-                const value = match[1];
+        if (hapTermUpper === "ACTUAL MAX CFM") {
+            const match = text.match(/Actual max CFM\s*[\.…]+\s*([\d.]+)/i);
+            if (match && match[1]) {
                 for (const [schedHeader, reqSection] of mappings) {
                     if (headerMap[schedHeader] !== undefined && 
                         (!reqSection || sectionClean.includes(deepTrim(reqSection)))) {
-                        res[schedHeader] = value;
+                        res[schedHeader] = match[1];
                     }
                 }
             }
@@ -514,17 +515,11 @@ function matchMappedTermsBySection(text, currentSection, mappingDict, headerMap)
     return res;
 }
 
-/**
- * Improved number extraction that handles dotted patterns
- * @param {string} text - Text to search
- * @param {string} keyword - Keyword to find
- * @returns {string} Extracted number
- */
 function extractNumberFromContext(text, keyword) {
-    // First try to match the pattern "keyword ...... number"
-    const dottedPattern = new RegExp(`${escapeRegExp(keyword)}\\s*\\.+\\s*([\\d.]+)`, 'i');
+    // First try to match the pattern "keyword ... number" with various separators
+    const dottedPattern = new RegExp(`${escapeRegExp(keyword)}\\s*[\.…]+\\s*([\\d.]+)`, 'i');
     const dottedMatch = text.match(dottedPattern);
-    if (dottedMatch) return dottedMatch[1];
+    if (dottedMatch && dottedMatch[1]) return dottedMatch[1];
     
     // Then try number pairs
     const pairMatch = text.match(/\d+\.\d+\s*\/\s*\d+\.\d+/);
