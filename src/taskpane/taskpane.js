@@ -287,8 +287,6 @@ import {
 } from "../firebase-auth.js";
 
 
-
-
 let headerRange = null;
 let rtfTextContent = null;
 
@@ -460,14 +458,25 @@ function matchMappedTermsBySection(txt, currentSection, mappingDict, headerMap) 
   const res = {};
   const clean = txt.toLowerCase();
   const sectionClean = deepTrim(currentSection);
+  
+  // Check each term in the mapping dictionary
   for (const hapKey of Object.keys(mappingDict)) {
     const hapKeyLower = hapKey.toLowerCase().trim();
-    if (clean.includes(hapKeyLower)) {
+    
+    // Only match if the term appears as a whole word (preceded by space or start of string)
+    // and followed by space, punctuation or end of string
+    const termRegex = new RegExp(`(^|\\s)${escapeRegExp(hapKeyLower)}(?=\\s|\\p{P}|$)`, 'u');
+    if (termRegex.test(clean)) {
+      // Extract the numeric value associated with this term
       const extracted = extractNumberFromContext(txt, hapKey);
+      
+      // Check all mappings for this term
       for (const [schedHeader, reqSection] of mappingDict[hapKey]) {
         const reqSectionClean = deepTrim(reqSection);
+        // If section matches (or no section specified)
         if (!reqSection || sectionClean.includes(reqSectionClean)) {
           if (headerMap[schedHeader] !== undefined) {
+            // Standardize power values if needed
             res[schedHeader] = schedHeader.includes("POWER") ? stdPower(parseFloat(extracted)) : extracted;
           }
         }
@@ -475,6 +484,15 @@ function matchMappedTermsBySection(txt, currentSection, mappingDict, headerMap) 
     }
   }
   return res;
+}
+
+/**
+ * Escapes special regex characters in a string
+ * @param {string} string - The string to escape
+ * @returns {string} The escaped string
+ */
+function escapeRegExp(string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function extractNumberFromContext(text, keyword) {
