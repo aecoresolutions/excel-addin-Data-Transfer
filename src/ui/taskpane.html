@@ -16,6 +16,9 @@
 
     <!-- Template styles -->
     <link href="../taskpane/taskpane.css" rel="stylesheet" type="text/css" />
+    
+    <!-- Load utility scripts first -->
+    <script type="module" src="../taskpane/utils/headerMapBuilder.js"></script> <!-- Assuming this contains buildHeaderMap -->
     <script type="module" src="../taskpane/taskpane.js"></script>
 </head>
 
@@ -28,24 +31,14 @@
     <button id="importRtf" class="btnn" style="margin-top: 0px;">Import RTF</button><br>
     <div id="messageBox" style="font-size: .7em;"></div><br>
 
-
-    
-<!--     <button id="selectHeader" class="btnn">📝 Select Header Range</button>
-    <button id="run" class="btnn" style="margin-top: 0px;">📄 Import RTF Files</button>
-    <div id="status"></div> <br> -->
-
-   <br> <div class="out-section">
+    <div class="out-section">
         <p> Request Logout</p>
-        <button id="requestLogout" class="out-btnn">Send E-Maill</button>
+        <button id="requestLogout" class="out-btnn">Send E-Mail</button>
         <br>
         <button onclick="openWhatsApp()" class="out-btnn">Contact on WhatsApp</button>
     </div>
-    <!-- <h1>Data Transfer Add-inn</h1>
-    <button id="run">Run Macro</button>
-    <input type="file" id="filePicker" accept=".docx,.rtf" /> -->
-    <!-- <p id="status" style="color: green; margin-top: 12px;"></p> -->
 
-    <script type="module" src="../taskpane/taskpane.js"></script>
+    <!-- Removed duplicate taskpane.js script -->
     <script>
         function openWhatsApp() {
             window.open("https://wa.link/2zvwid", "_blank");
