@@ -531,13 +531,22 @@ function extractNumberFromContext(text, keyword) {
     if (pairMatch) return pairMatch[0];
     
     // Then try single numbers after keyword
-    const afterKeyword = text.slice(text.toLowerCase().indexOf(keyword.toLowerCase()) + keyword.length;
+    const afterKeyword = text.slice(text.toLowerCase().indexOf(keyword.toLowerCase()) + keyword.length);
     const numMatch = afterKeyword.match(/([-+]?[0-9]*\.?[0-9]+)/);
     if (numMatch) return numMatch[1];
     
     // Fallback to last number in text
     const allNums = text.match(/([-+]?[0-9]*\.?[0-9]+)/g);
     return allNums ? allNums[allNums.length - 1] : "";
+}
+
+/**
+ * Escapes special regex characters in a string
+ * @param {string} string - The string to escape
+ * @returns {string} The escaped string
+ */
+function escapeRegExp(string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function stdPower(value) {
