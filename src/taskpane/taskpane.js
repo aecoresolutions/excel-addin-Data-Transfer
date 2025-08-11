@@ -277,12 +277,9 @@
 
 
 
-
-
 import {
   logoutRequestLocal
 } from "../firebase-auth.js";
-
 
 let headerRange = null;
 let rtfTextContent = null;
@@ -302,9 +299,42 @@ function showMessage(msg) {
   console.log("MESSAGE:", msg);
 }
 
-
 function deepTrim(str = "") {
   return str.replace(/\s+/g, "").replace(/[\u200B-\u200D\uFEFF]/g, "").toUpperCase();
+}
+
+function escapeRegExp(string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function buildHeaderMap(headerRange) {
+  const headerMap = {};
+  const values = headerRange.values;
+  const rowCount = headerRange.rowCount;
+  const colCount = headerRange.columnCount;
+  
+  for (let c = 0; c < colCount; c++) {
+    let top = "", bottom = "";
+    for (let r = 0; r < rowCount; r++) if (values[r][c]) { top = values[r][c]; break; }
+    for (let r = rowCount - 1; r >= 0; r--) if (values[r][c]) { bottom = values[r][c]; break; }
+    
+    let key = (top && bottom && top !== bottom) ? `${top}|${bottom}` : (top || bottom || "");
+    key = key.toUpperCase().replace(/\s+/g, "");
+    if (key) headerMap[key] = headerRange.columnIndex + c;
+  }
+  return headerMap;
+}
+
+function buildMappingDict(data) {
+  const mappingDict = {};
+  data.slice(2).forEach((row) => {
+    const schedHeader = ((row[0] ? row[0] + "|" : "") + row[1]).toUpperCase().replace(/\s+/g, "");
+    const hapTerm = String(row[3] || "").toUpperCase().trim();
+    const section = String(row[2] || "").toUpperCase().trim();
+    if (!mappingDict[hapTerm]) mappingDict[hapTerm] = [];
+    mappingDict[hapTerm].push([schedHeader, section]);
+  });
+  return mappingDict;
 }
 
 async function selectHeader() {
@@ -345,140 +375,33 @@ function handleRtfUpload(event) {
   reader.readAsText(file);
 }
 
-async function importRtfToExcel() {
-  if (!headerRange || !rtfTextContent) {
-    showMessage("⚠️ Please select header and upload RTF file first.");
-    return;
-  }
+function extractValueFromLine(text) {
+  const pairMatch = text.match(/\d+\.\d+\s*\/\s*\d+\.\d+/);
+  if (pairMatch) return pairMatch[0];
 
-  await Excel.run(async (context) => {
-    context.trackedObjects.add(headerRange);
-    const sheet = context.workbook.worksheets.getActiveWorksheet();
-    const mapWS = context.workbook.worksheets.getItem("Mapping");
-    const usedRange = mapWS.getUsedRange();
-    usedRange.load("values");
-    headerRange.load(["values", "rowIndex", "columnIndex", "rowCount", "columnCount"]);
-    await context.sync();
-
-    // Debug: Log mapping data
-    console.log("Mapping Worksheet Data:", JSON.stringify(usedRange.values));
-    console.log("Header Range Data:", JSON.stringify(headerRange.values));
-
-    const startClearRow = headerRange.rowIndex + headerRange.rowCount;
-    const clearRange = sheet.getRangeByIndexes(startClearRow, headerRange.columnIndex, 1000, headerRange.columnCount);
-    clearRange.clear(Excel.ClearApplyTo.contents);
-
-    const headerMap = buildHeaderMap(headerRange);
-    const mappingDict = buildMappingDict(usedRange.values);
-
-    // Debug: Log the built mappings
-    console.log("Header Map:", JSON.stringify(headerMap));
-    console.log("Mapping Dictionary:", JSON.stringify(mappingDict));
-
-    let currentSection = "";
-    let iRow = headerRange.rowIndex + headerRange.rowCount;
-    let tempRow = {};
-    const writtenUnits = {};
-    const unitHeader = getUnitHeader(mappingDict);
-
-    // Debug: Log the RTF content being processed
-    console.log("RTF Content to Process:", rtfTextContent);
-
-    for (let i = 0; i < rtfTextContent.length; i++) {
-      const txt = rtfTextContent[i].trim();
-      if (!txt) continue;
-
-      if (/Sizing Data|Cooling Coil|Outdoor Ventilation|Air System Information/i.test(txt)) {
-        currentSection = txt.toUpperCase();
-        console.log(`New Section: ${currentSection}`);
-      }
-
-      if (/Air System Name/i.test(txt)) {
-        const systemName = extractValueFromLine(txt);
-        if (Object.keys(tempRow).length > 1 && tempRow[unitHeader] && !writtenUnits[tempRow[unitHeader]]) {
-          if (writeRow(sheet, headerMap, iRow, tempRow)) iRow++;
-          writtenUnits[tempRow[unitHeader]] = true;
-        }
-        tempRow = {};
-        if (unitHeader) tempRow[unitHeader] = systemName;
-        continue;
-      }
-
-      // Special handling for CFM values
-      if (currentSection.includes("SIZING DATA")) {
-        const cfmMatch = txt.match(/Actual max CFM\s*[.:…]+\s*([\d.]+)\s*CFM/i);
-        if (cfmMatch) {
-          console.log(`Found CFM: ${cfmMatch[1]}`);
-          const schedHeader = findHeaderForTerm(mappingDict, "ACTUAL MAX CFM", headerMap, currentSection);
-          if (schedHeader) tempRow[schedHeader] = cfmMatch[1];
-        }
-
-        const cfmPerFtMatch = txt.match(/Actual max CFM\/ft²\s*[.:…]+\s*([\d.]+)\s*CFM\/ft²/i);
-        if (cfmPerFtMatch) {
-          console.log(`Found CFM/ft²: ${cfmPerFtMatch[1]}`);
-          const schedHeader = findHeaderForTerm(mappingDict, "ACTUAL MAX CFM/FT²", headerMap, currentSection);
-          if (schedHeader) tempRow[schedHeader] = cfmPerFtMatch[1];
-        }
-      }
-
-      const matches = matchMappedTermsBySection(txt, currentSection, mappingDict, headerMap);
-      if (Object.keys(matches).length > 0) {
-        console.log(`Matches for line ${i}:`, matches);
-        Object.assign(tempRow, matches);
-      }
-    }
-
-    if (Object.keys(tempRow).length > 1 && tempRow[unitHeader] && !writtenUnits[tempRow[unitHeader]]) {
-      if (writeRow(sheet, headerMap, iRow, tempRow)) iRow++;
-    }
-
-    await context.sync();
-    showMessage("✅ RTF import complete.");
-  });
+  const parts = text.split(/Air System Name/i);
+  return parts[1] ? parts[1].trim() : "";
 }
 
-// Helper function to find the correct header for a term
+function getUnitHeader(mappingDict) {
+  if (mappingDict["AIR SYSTEM NAME"]) {
+    const pair = mappingDict["AIR SYSTEM NAME"][0];
+    return pair[0];
+  }
+  return "";
+}
+
 function findHeaderForTerm(mappingDict, term, headerMap, currentSection) {
   const sectionClean = deepTrim(currentSection);
   const mappings = mappingDict[term] || [];
-
+  
   for (const [schedHeader, reqSection] of mappings) {
-    if (headerMap[schedHeader] !== undefined &&
-      (!reqSection || sectionClean.includes(deepTrim(reqSection)))) {
+    if (headerMap[schedHeader] !== undefined && 
+        (!reqSection || sectionClean.includes(deepTrim(reqSection)))) {
       return schedHeader;
     }
   }
   return null;
-}
-
-// Modified matching function
-function matchMappedTermsBySection(text, currentSection, mappingDict, headerMap) {
-  const res = {};
-  const sectionClean = deepTrim(currentSection);
-  const textUpper = text.toUpperCase();
-
-  // Skip CFM terms since we handle them separately
-  if (textUpper.includes("ACTUAL MAX CFM") || textUpper.includes("ACTUAL MAX CFM/FT²")) {
-    return res;
-  }
-
-  // Process other terms
-  for (const [hapTerm, mappings] of Object.entries(mappingDict)) {
-    const hapTermUpper = hapTerm.toUpperCase();
-
-    if (!textUpper.includes(hapTermUpper)) continue;
-
-    const extracted = extractNumberFromContext(text, hapTerm);
-    if (extracted) {
-      for (const [schedHeader, reqSection] of mappings) {
-        if (headerMap[schedHeader] !== undefined &&
-          (!reqSection || sectionClean.includes(deepTrim(reqSection)))) {
-          res[schedHeader] = schedHeader.includes("POWER") ? stdPower(parseFloat(extracted)) : extracted;
-        }
-      }
-    }
-  }
-  return res;
 }
 
 function extractNumberFromContext(text, keyword) {
@@ -486,28 +409,19 @@ function extractNumberFromContext(text, keyword) {
   const dottedPattern = new RegExp(`${escapeRegExp(keyword)}\\s*[\.…]+\\s*([\\d.]+)`, 'i');
   const dottedMatch = text.match(dottedPattern);
   if (dottedMatch && dottedMatch[1]) return dottedMatch[1];
-
+  
   // Then try number pairs
   const pairMatch = text.match(/\d+\.\d+\s*\/\s*\d+\.\d+/);
   if (pairMatch) return pairMatch[0];
-
+  
   // Then try single numbers after keyword
   const afterKeyword = text.slice(text.toLowerCase().indexOf(keyword.toLowerCase()) + keyword.length);
   const numMatch = afterKeyword.match(/([-+]?[0-9]*\.?[0-9]+)/);
   if (numMatch) return numMatch[1];
-
+  
   // Fallback to last number in text
   const allNums = text.match(/([-+]?[0-9]*\.?[0-9]+)/g);
   return allNums ? allNums[allNums.length - 1] : "";
-}
-
-/**
- * Escapes special regex characters in a string
- * @param {string} string - The string to escape
- * @returns {string} The escaped string
- */
-function escapeRegExp(string) {
-  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function stdPower(value) {
@@ -546,17 +460,135 @@ function writeRow(sheet, headerMap, row, data) {
   }
 }
 
+function matchMappedTermsBySection(text, currentSection, mappingDict, headerMap) {
+  const res = {};
+  const sectionClean = deepTrim(currentSection);
+  const textUpper = text.toUpperCase();
 
-/* ─── Request Logout (opens mail client) ─── */
+  // Skip CFM terms since we handle them separately
+  if (textUpper.includes("ACTUAL MAX CFM") || textUpper.includes("ACTUAL MAX CFM/FT²")) {
+    return res;
+  }
+
+  // Process other terms
+  for (const [hapTerm, mappings] of Object.entries(mappingDict)) {
+    const hapTermUpper = hapTerm.toUpperCase();
+
+    if (!textUpper.includes(hapTermUpper)) continue;
+
+    const extracted = extractNumberFromContext(text, hapTerm);
+    if (extracted) {
+      for (const [schedHeader, reqSection] of mappings) {
+        if (headerMap[schedHeader] !== undefined && 
+            (!reqSection || sectionClean.includes(deepTrim(reqSection)))) {
+          res[schedHeader] = schedHeader.includes("POWER") ? stdPower(parseFloat(extracted)) : extracted;
+        }
+      }
+    }
+  }
+  return res;
+}
+
+async function importRtfToExcel() {
+  if (!headerRange || !rtfTextContent) {
+    showMessage("⚠️ Please select header and upload RTF file first.");
+    return;
+  }
+
+  try {
+    await Excel.run(async (context) => {
+      context.trackedObjects.add(headerRange);
+      const sheet = context.workbook.worksheets.getActiveWorksheet();
+      const mapWS = context.workbook.worksheets.getItem("Mapping");
+      const usedRange = mapWS.getUsedRange();
+      usedRange.load("values");
+      headerRange.load(["values", "rowIndex", "columnIndex", "rowCount", "columnCount"]);
+      await context.sync();
+
+      console.log("Mapping Worksheet Data:", JSON.stringify(usedRange.values));
+      console.log("Header Range Data:", JSON.stringify(headerRange.values));
+
+      const startClearRow = headerRange.rowIndex + headerRange.rowCount;
+      const clearRange = sheet.getRangeByIndexes(startClearRow, headerRange.columnIndex, 1000, headerRange.columnCount);
+      clearRange.clear(Excel.ClearApplyTo.contents);
+
+      const headerMap = buildHeaderMap(headerRange);
+      const mappingDict = buildMappingDict(usedRange.values);
+
+      console.log("Header Map:", JSON.stringify(headerMap));
+      console.log("Mapping Dictionary:", JSON.stringify(mappingDict));
+
+      let currentSection = "";
+      let iRow = headerRange.rowIndex + headerRange.rowCount;
+      let tempRow = {};
+      const writtenUnits = {};
+      const unitHeader = getUnitHeader(mappingDict);
+
+      console.log("RTF Content to Process:", rtfTextContent);
+
+      for (let i = 0; i < rtfTextContent.length; i++) {
+        const txt = rtfTextContent[i].trim();
+        if (!txt) continue;
+
+        if (/Sizing Data|Cooling Coil|Outdoor Ventilation|Air System Information/i.test(txt)) {
+          currentSection = txt.toUpperCase();
+          console.log(`New Section: ${currentSection}`);
+        }
+
+        if (/Air System Name/i.test(txt)) {
+          const systemName = extractValueFromLine(txt);
+          if (Object.keys(tempRow).length > 1 && tempRow[unitHeader] && !writtenUnits[tempRow[unitHeader]]) {
+            if (writeRow(sheet, headerMap, iRow, tempRow)) iRow++;
+            writtenUnits[tempRow[unitHeader]] = true;
+          }
+          tempRow = {};
+          if (unitHeader) tempRow[unitHeader] = systemName;
+          continue;
+        }
+
+        // Special handling for CFM values
+        if (currentSection.includes("SIZING DATA")) {
+          const cfmMatch = txt.match(/Actual max CFM\s*[.:…]+\s*([\d.]+)\s*CFM/i);
+          if (cfmMatch) {
+            console.log(`Found CFM: ${cfmMatch[1]}`);
+            const schedHeader = findHeaderForTerm(mappingDict, "ACTUAL MAX CFM", headerMap, currentSection);
+            if (schedHeader) tempRow[schedHeader] = cfmMatch[1];
+          }
+
+          const cfmPerFtMatch = txt.match(/Actual max CFM\/ft²\s*[.:…]+\s*([\d.]+)\s*CFM\/ft²/i);
+          if (cfmPerFtMatch) {
+            console.log(`Found CFM/ft²: ${cfmPerFtMatch[1]}`);
+            const schedHeader = findHeaderForTerm(mappingDict, "ACTUAL MAX CFM/FT²", headerMap, currentSection);
+            if (schedHeader) tempRow[schedHeader] = cfmPerFtMatch[1];
+          }
+        }
+
+        const matches = matchMappedTermsBySection(txt, currentSection, mappingDict, headerMap);
+        if (Object.keys(matches).length > 0) {
+          console.log(`Matches for line ${i}:`, matches);
+          Object.assign(tempRow, matches);
+        }
+      }
+
+      if (Object.keys(tempRow).length > 1 && tempRow[unitHeader] && !writtenUnits[tempRow[unitHeader]]) {
+        if (writeRow(sheet, headerMap, iRow, tempRow)) iRow++;
+      }
+
+      await context.sync();
+      showMessage("✅ RTF import complete.");
+    });
+  } catch (error) {
+    console.error("Import error:", error);
+    showMessage("❌ Import failed. Check console for details.");
+  }
+}
+
 async function requestLogout() {
   console.log("requestLogout function called.");
   const email = localStorage.getItem("email") || "Unknown User";
   const subject = encodeURIComponent("Logout Request");
   const body = encodeURIComponent(`${email} requests logout from Excel Data Transfer Add‑in.`);
-  // window.location.href = `mailto:aecoresolutions@gmail.com?subject=${subject}&body=${body}`;
   window.open(`mailto:aecoresolutions@gmail.com?subject=${subject}&body=${body}`, "_blank");
-  /* local clean‑up */
-  // logoutRequestLocal depends on Firebase. If Firebase is not initialized, this won't work.
   await logoutRequestLocal();
   console.log("logoutRequestLocal completed.");
 }
