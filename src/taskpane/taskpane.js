@@ -279,9 +279,6 @@
 
 
 
-
-
-
 import {
   logoutRequestLocal
 } from "../firebase-auth.js";
@@ -363,6 +360,10 @@ async function importRtfToExcel() {
     headerRange.load(["values", "rowIndex", "columnIndex", "rowCount", "columnCount"]);
     await context.sync();
 
+    // Debug: Log mapping data
+    console.log("Mapping Worksheet Data:", JSON.stringify(usedRange.values));
+    console.log("Header Range Data:", JSON.stringify(headerRange.values));
+
     const startClearRow = headerRange.rowIndex + headerRange.rowCount;
     const clearRange = sheet.getRangeByIndexes(startClearRow, headerRange.columnIndex, 1000, headerRange.columnCount);
     clearRange.clear(Excel.ClearApplyTo.contents);
@@ -370,11 +371,18 @@ async function importRtfToExcel() {
     const headerMap = buildHeaderMap(headerRange);
     const mappingDict = buildMappingDict(usedRange.values);
 
+    // Debug: Log the built mappings
+    console.log("Header Map:", JSON.stringify(headerMap));
+    console.log("Mapping Dictionary:", JSON.stringify(mappingDict));
+
     let currentSection = "";
     let iRow = headerRange.rowIndex + headerRange.rowCount;
     let tempRow = {};
     const writtenUnits = {};
     const unitHeader = getUnitHeader(mappingDict);
+
+    // Debug: Log the RTF content being processed
+    console.log("RTF Content to Process:", rtfTextContent);
 
     for (let i = 0; i < rtfTextContent.length; i++) {
       const txt = rtfTextContent[i].trim();
@@ -382,6 +390,7 @@ async function importRtfToExcel() {
 
       if (/Sizing Data|Cooling Coil|Outdoor Ventilation|Air System Information/i.test(txt)) {
         currentSection = txt.toUpperCase();
+        console.log(`New Section: ${currentSection}`);
       }
 
       if (/Air System Name/i.test(txt)) {
@@ -395,8 +404,26 @@ async function importRtfToExcel() {
         continue;
       }
 
+      // Special handling for CFM values
+      if (currentSection.includes("SIZING DATA")) {
+        const cfmMatch = txt.match(/Actual max CFM\s*[.:…]+\s*([\d.]+)\s*CFM/i);
+        if (cfmMatch) {
+          console.log(`Found CFM: ${cfmMatch[1]}`);
+          const schedHeader = findHeaderForTerm(mappingDict, "ACTUAL MAX CFM", headerMap, currentSection);
+          if (schedHeader) tempRow[schedHeader] = cfmMatch[1];
+        }
+
+        const cfmPerFtMatch = txt.match(/Actual max CFM\/ft²\s*[.:…]+\s*([\d.]+)\s*CFM\/ft²/i);
+        if (cfmPerFtMatch) {
+          console.log(`Found CFM/ft²: ${cfmPerFtMatch[1]}`);
+          const schedHeader = findHeaderForTerm(mappingDict, "ACTUAL MAX CFM/FT²", headerMap, currentSection);
+          if (schedHeader) tempRow[schedHeader] = cfmPerFtMatch[1];
+        }
+      }
+
       const matches = matchMappedTermsBySection(txt, currentSection, mappingDict, headerMap);
       if (Object.keys(matches).length > 0) {
+        console.log(`Matches for line ${i}:`, matches);
         Object.assign(tempRow, matches);
       }
     }
@@ -410,129 +437,68 @@ async function importRtfToExcel() {
   });
 }
 
-function getUnitHeader(mappingDict) {
-  if (mappingDict["AIR SYSTEM NAME"]) {
-    const pair = mappingDict["AIR SYSTEM NAME"][0];
-    return pair[0];
-  }
-  return "";
-}
+// Helper function to find the correct header for a term
+function findHeaderForTerm(mappingDict, term, headerMap, currentSection) {
+  const sectionClean = deepTrim(currentSection);
+  const mappings = mappingDict[term] || [];
 
-function extractValueFromLine(text) {
-  const pairMatch = text.match(/\d+\.\d+\s*\/\s*\d+\.\d+/);
-  if (pairMatch) return pairMatch[0];
-
-  const parts = text.split(/Air System Name/i);
-  return parts[1] ? parts[1].trim() : "";
-}
-
-function buildHeaderMap(headerRange) {
-  const headerMap = {};
-  const values = headerRange.values;
-  const rowCount = headerRange.rowCount;
-  const colCount = headerRange.columnCount;
-  for (let c = 0; c < colCount; c++) {
-    let top = "", bottom = "";
-    for (let r = 0; r < rowCount; r++) if (values[r][c]) { top = values[r][c]; break; }
-    for (let r = rowCount - 1; r >= 0; r--) if (values[r][c]) { bottom = values[r][c]; break; }
-    let key = (top && bottom && top !== bottom) ? `${top}|${bottom}` : (top || bottom || "");
-    key = key.toUpperCase().replace(/\s+/g, "");
-    if (key) headerMap[key] = headerRange.columnIndex + c;
-  }
-  return headerMap;
-}
-
-function buildMappingDict(data) {
-  const mappingDict = {};
-  data.slice(2).forEach((row) => {
-    const schedHeader = ((row[0] ? row[0] + "|" : "") + row[1]).toUpperCase().replace(/\s+/g, "");
-    const hapTerm = String(row[3] || "").toUpperCase().trim();
-    const section = String(row[2] || "").toUpperCase().trim();
-    if (!mappingDict[hapTerm]) mappingDict[hapTerm] = [];
-    mappingDict[hapTerm].push([schedHeader, section]);
-  });
-  return mappingDict;
-}
-
-/**
- * Extracts values from RTF content lines with more precise matching
- * @param {string} text - The text line from RTF
- * @param {string} currentSection - Current section name
- * @param {Object} mappingDict - Mapping dictionary
- * @param {Object} headerMap - Header column mapping
- * @returns {Object} Matched values with their corresponding headers
- */
-function matchMappedTermsBySection(text, currentSection, mappingDict, headerMap) {
-    const res = {};
-    const sectionClean = deepTrim(currentSection);
-    const textUpper = text.toUpperCase();
-    
-    // Process each mapping term
-    for (const [hapTerm, mappings] of Object.entries(mappingDict)) {
-        const hapTermUpper = hapTerm.toUpperCase();
-        
-        // Skip if term isn't in this line (case insensitive)
-        if (!textUpper.includes(hapTermUpper)) continue;
-        
-        // Special handling for CFM values
-        if (hapTermUpper === "ACTUAL MAX CFM/FT²") {
-            const match = text.match(/Actual max CFM\/ft²\s*[\.…]+\s*([\d.]+)/i);
-            if (match && match[1]) {
-                for (const [schedHeader, reqSection] of mappings) {
-                    if (headerMap[schedHeader] !== undefined && 
-                        (!reqSection || sectionClean.includes(deepTrim(reqSection)))) {
-                        res[schedHeader] = match[1];
-                    }
-                }
-            }
-            continue;
-        }
-        
-        if (hapTermUpper === "ACTUAL MAX CFM") {
-            const match = text.match(/Actual max CFM\s*[\.…]+\s*([\d.]+)/i);
-            if (match && match[1]) {
-                for (const [schedHeader, reqSection] of mappings) {
-                    if (headerMap[schedHeader] !== undefined && 
-                        (!reqSection || sectionClean.includes(deepTrim(reqSection)))) {
-                        res[schedHeader] = match[1];
-                    }
-                }
-            }
-            continue;
-        }
-        
-        // Default handling for other terms
-        const extracted = extractNumberFromContext(text, hapTerm);
-        if (extracted) {
-            for (const [schedHeader, reqSection] of mappings) {
-                if (headerMap[schedHeader] !== undefined && 
-                    (!reqSection || sectionClean.includes(deepTrim(reqSection)))) {
-                    res[schedHeader] = schedHeader.includes("POWER") ? stdPower(parseFloat(extracted)) : extracted;
-                }
-            }
-        }
+  for (const [schedHeader, reqSection] of mappings) {
+    if (headerMap[schedHeader] !== undefined &&
+      (!reqSection || sectionClean.includes(deepTrim(reqSection)))) {
+      return schedHeader;
     }
+  }
+  return null;
+}
+
+// Modified matching function
+function matchMappedTermsBySection(text, currentSection, mappingDict, headerMap) {
+  const res = {};
+  const sectionClean = deepTrim(currentSection);
+  const textUpper = text.toUpperCase();
+
+  // Skip CFM terms since we handle them separately
+  if (textUpper.includes("ACTUAL MAX CFM") || textUpper.includes("ACTUAL MAX CFM/FT²")) {
     return res;
+  }
+
+  // Process other terms
+  for (const [hapTerm, mappings] of Object.entries(mappingDict)) {
+    const hapTermUpper = hapTerm.toUpperCase();
+
+    if (!textUpper.includes(hapTermUpper)) continue;
+
+    const extracted = extractNumberFromContext(text, hapTerm);
+    if (extracted) {
+      for (const [schedHeader, reqSection] of mappings) {
+        if (headerMap[schedHeader] !== undefined &&
+          (!reqSection || sectionClean.includes(deepTrim(reqSection)))) {
+          res[schedHeader] = schedHeader.includes("POWER") ? stdPower(parseFloat(extracted)) : extracted;
+        }
+      }
+    }
+  }
+  return res;
 }
 
 function extractNumberFromContext(text, keyword) {
-    // First try to match the pattern "keyword ... number" with various separators
-    const dottedPattern = new RegExp(`${escapeRegExp(keyword)}\\s*[\.…]+\\s*([\\d.]+)`, 'i');
-    const dottedMatch = text.match(dottedPattern);
-    if (dottedMatch && dottedMatch[1]) return dottedMatch[1];
-    
-    // Then try number pairs
-    const pairMatch = text.match(/\d+\.\d+\s*\/\s*\d+\.\d+/);
-    if (pairMatch) return pairMatch[0];
-    
-    // Then try single numbers after keyword
-    const afterKeyword = text.slice(text.toLowerCase().indexOf(keyword.toLowerCase()) + keyword.length);
-    const numMatch = afterKeyword.match(/([-+]?[0-9]*\.?[0-9]+)/);
-    if (numMatch) return numMatch[1];
-    
-    // Fallback to last number in text
-    const allNums = text.match(/([-+]?[0-9]*\.?[0-9]+)/g);
-    return allNums ? allNums[allNums.length - 1] : "";
+  // First try to match the pattern "keyword ... number" with various separators
+  const dottedPattern = new RegExp(`${escapeRegExp(keyword)}\\s*[\.…]+\\s*([\\d.]+)`, 'i');
+  const dottedMatch = text.match(dottedPattern);
+  if (dottedMatch && dottedMatch[1]) return dottedMatch[1];
+
+  // Then try number pairs
+  const pairMatch = text.match(/\d+\.\d+\s*\/\s*\d+\.\d+/);
+  if (pairMatch) return pairMatch[0];
+
+  // Then try single numbers after keyword
+  const afterKeyword = text.slice(text.toLowerCase().indexOf(keyword.toLowerCase()) + keyword.length);
+  const numMatch = afterKeyword.match(/([-+]?[0-9]*\.?[0-9]+)/);
+  if (numMatch) return numMatch[1];
+
+  // Fallback to last number in text
+  const allNums = text.match(/([-+]?[0-9]*\.?[0-9]+)/g);
+  return allNums ? allNums[allNums.length - 1] : "";
 }
 
 /**
