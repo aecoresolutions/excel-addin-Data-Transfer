@@ -453,6 +453,10 @@ async function selectHeader() {
  * Handles uploading and parsing an RTF file
  * @param {Event} event - The file upload event
  */
+/**
+ * Handles uploading and parsing an RTF file
+ * @param {Event} event - The file upload event
+ */
 function handleRtfUpload(event) {
   const file = event.target.files[0];
   const reader = new FileReader();
@@ -460,14 +464,14 @@ function handleRtfUpload(event) {
   reader.onload = (e) => {
     const content = e.target.result;
     // Parse RTF content by:
-    // 1. Replacing RTF commands with newlines
+    // 1. Replacing paragraph markers with newlines
     // 2. Converting hex codes to characters
-    // 3. Removing remaining RTF syntax
+    // 3. Removing RTF commands but preserving "/"
     // 4. Splitting into lines and cleaning each line
     rtfTextContent = content
-      .replace(/\\pard?/g, "\n")
-      .replace(/\\'[0-9a-fA-F]{2}/g, (m) => String.fromCharCode(parseInt(m.slice(2), 16)))
-      .replace(/\\[^ ]+ ?|[{}]/g, m => m === '/' ? '/' : "")
+      .replace(/\\pard?/g, "\n") // Paragraph breaks
+      .replace(/\\'[0-9a-fA-F]{2}/g, (m) => String.fromCharCode(parseInt(m.slice(2), 16))) // Hex to char
+      .replace(/\\[^ \/]+ ?|[{}]/g, "") // Remove RTF control words but keep "/"
       .split("\n")
       .map((line) => line.trim())
       .filter((line) => line.length > 0);
@@ -477,6 +481,7 @@ function handleRtfUpload(event) {
   };
   reader.readAsText(file);
 }
+
 
 /**
  * Imports the parsed RTF content into Excel based on the selected header
