@@ -467,7 +467,7 @@ function handleRtfUpload(event) {
     rtfTextContent = content
       .replace(/\\pard?/g, "\n")
       .replace(/\\'[0-9a-fA-F]{2}/g, (m) => String.fromCharCode(parseInt(m.slice(2), 16)))
-      .replace(/\\[^ ]+ ?|[{}]/g, "")
+      .replace(/\\[^ ]+ ?|[{}]/g, m => m === '/' ? '/' : "")
       .split("\n")
       .map((line) => line.trim())
       .filter((line) => line.length > 0);
