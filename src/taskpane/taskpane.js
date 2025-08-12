@@ -648,32 +648,39 @@ function buildMappingDict(data) {
  * @param {Object} headerMap - The header mapping
  * @returns {Object} Matched values with their corresponding headers
  */
-function matchMappedTermsBySection(txt, currentSection, mappingDict, headerMap) {
-  const res = {};
-  const clean = txt.toLowerCase();
-  const sectionClean = deepTrim(currentSection);
-  
-  // Check each term in the mapping dictionary
-  for (const hapKey of Object.keys(mappingDict)) {
-    const hapKeyLower = hapKey.toLowerCase().trim();
-    if (clean.includes(hapKeyLower)) {
-      // Extract the numeric value associated with this term
-      const extracted = extractNumberFromContext(txt, hapKey);
-      
-      // Check all mappings for this term
-      for (const [schedHeader, reqSection] of mappingDict[hapKey]) {
-        const reqSectionClean = deepTrim(reqSection);
-        // If section matches (or no section specified)
-        if (!reqSection || sectionClean.includes(reqSectionClean)) {
-          if (headerMap[schedHeader] !== undefined) {
-            // Standardize power values if needed
-            res[schedHeader] = schedHeader.includes("POWER") ? stdPower(parseFloat(extracted)) : extracted;
-          }
+function matchMappedTermsBySection(text, currentSection, mappingDict, headerMap) {
+    const res = {};
+    const sectionClean = deepTrim(currentSection);
+    const textUpper = text.toUpperCase();
+
+    // Process all terms from the mapping dictionary
+    for (const [hapTerm, mappings] of Object.entries(mappingDict)) {
+        // Skip empty terms
+        if (!hapTerm.trim()) continue;
+        
+        // Create regex pattern that matches the term followed by value pattern
+        const termPattern = new RegExp(
+            `${escapeRegExp(hapTerm)}\\s*[.:…]+\\s*([\\d.]+)(?:\\s*\\b\\w+\\b)?`,
+            'i'
+        );
+        
+        const match = text.match(termPattern);
+        if (match) {
+            const value = match[1];
+            console.log(`Matched term "${hapTerm}" with value "${value}"`);
+            
+            // Apply to all relevant columns
+            for (const [schedHeader, reqSection] of mappings) {
+                if (headerMap[schedHeader] !== undefined && 
+                    (!reqSection || sectionClean.includes(deepTrim(reqSection)))) {
+                    res[schedHeader] = schedHeader.includes("POWER") 
+                        ? stdPower(parseFloat(value)) 
+                        : value;
+                }
+            }
         }
-      }
     }
-  }
-  return res;
+    return res;
 }
 
 /**
