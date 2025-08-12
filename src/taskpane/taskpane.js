@@ -524,22 +524,36 @@ async function importRtfToExcel() {
       }
 
       // Handle system name lines
+      
+      /////////from
       if (/Air System Name/i.test(txt)) {
-        const systemName = extractValueFromLine(txt);
-        if (Object.keys(tempRow).length > 1 && tempRow[unitHeader] && !writtenUnits[tempRow[unitHeader]]) {
-          if (writeRow(sheet, headerMap, iRow, tempRow)) iRow++;
-          writtenUnits[tempRow[unitHeader]] = true;
+    const systemName = extractValueFromLine(txt);
+    
+    // Write the previous row if it has data (except just the unit name)
+    if (Object.keys(tempRow).length > 1) {
+        if (tempRow[unitHeader] && !writtenUnits[tempRow[unitHeader]]) {
+            if (writeRow(sheet, headerMap, iRow, tempRow)) {
+                writtenUnits[tempRow[unitHeader]] = true;
+                iRow++;
+            }
         }
-        tempRow = {};
-        if (unitHeader) tempRow[unitHeader] = systemName;
-        continue;
-      }
+    }
+    
+    // Start a new row with the system name
+    tempRow = {};
+    if (unitHeader) {
+        tempRow[unitHeader] = systemName;
+    }
+    continue;
+}
 
-      // Match terms from the current section
-      const matches = matchMappedTermsBySection(txt, currentSection, mappingDict, headerMap);
-      if (Object.keys(matches).length > 0) {
-        Object.assign(tempRow, matches);
-      }
+// Match terms from the current section
+const matches = matchMappedTermsBySection(txt, currentSection, mappingDict, headerMap);
+if (Object.keys(matches).length > 0) {
+    Object.assign(tempRow, matches);
+}
+      ////////////here
+      
     }
 
     // Write any remaining data
