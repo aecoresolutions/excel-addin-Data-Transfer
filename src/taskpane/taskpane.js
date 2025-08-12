@@ -385,8 +385,6 @@
 
 
 
-
-
 import {
   logoutRequestLocal
 } from "../firebase-auth.js";
@@ -669,20 +667,23 @@ function matchMappedTermsBySection(txt, currentSection, mappingDict, headerMap) 
  * @returns {string} The extracted number or empty string if none found
  */
 function extractNumberFromContext(text, keyword) {
-  // First try to match the pattern "keyword ... number"
-  const dottedPattern = new RegExp(`${escapeRegExp(keyword)}\\s*[.:…]+\\s*([\\d.]+)`, 'i');
-  const dottedMatch = text.match(dottedPattern);
-  if (dottedMatch) return dottedMatch[1];
-  
-  // Then try to find the first number after the keyword
-  const afterKeyword = text.slice(text.toLowerCase().indexOf(keyword.toLowerCase()) + keyword.length);
-  const numMatch = afterKeyword.match(/([-+]?[0-9]*\.?[0-9]+)/);
+  const index = text.toLowerCase().indexOf(keyword.toLowerCase());
+  if (index === -1) return "";
+  const after = text.slice(index + keyword.length).trim();
+
+  // Try to match number pairs first
+  const pairMatch = after.match(/\d+\.\d+\s*\/\s*\d+\.\d+/);
+  if (pairMatch) return pairMatch[0];
+
+  // Then try single numbers
+  const numMatch = after.match(/^([-+]?[0-9]*\.?[0-9]+)/);
   if (numMatch) return numMatch[1];
-  
-  // Fallback to last number in text
+
+  // Fallback to last number in the text
   const allNums = text.match(/([-+]?[0-9]*\.?[0-9]+)/g);
   return allNums ? allNums[allNums.length - 1] : "";
 }
+
 /**
  * Standardizes power values to predefined levels
  * @param {number} value - The power value to standardize
@@ -748,4 +749,18 @@ async function requestLogout() {
   await logoutRequestLocal();
   console.log("logoutRequestLocal completed.");
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
