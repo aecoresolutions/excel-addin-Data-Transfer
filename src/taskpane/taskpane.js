@@ -524,36 +524,22 @@ async function importRtfToExcel() {
       }
 
       // Handle system name lines
-      
-      /////////from
       if (/Air System Name/i.test(txt)) {
-    const systemName = extractValueFromLine(txt);
-    
-    // Write the previous row if it has data (except just the unit name)
-    if (Object.keys(tempRow).length > 1) {
-        if (tempRow[unitHeader] && !writtenUnits[tempRow[unitHeader]]) {
-            if (writeRow(sheet, headerMap, iRow, tempRow)) {
-                writtenUnits[tempRow[unitHeader]] = true;
-                iRow++;
-            }
+        const systemName = extractValueFromLine(txt);
+        if (Object.keys(tempRow).length > 1 && tempRow[unitHeader] && !writtenUnits[tempRow[unitHeader]]) {
+          if (writeRow(sheet, headerMap, iRow, tempRow)) iRow++;
+          writtenUnits[tempRow[unitHeader]] = true;
         }
-    }
-    
-    // Start a new row with the system name
-    tempRow = {};
-    if (unitHeader) {
-        tempRow[unitHeader] = systemName;
-    }
-    continue;
-}
+        tempRow = {};
+        if (unitHeader) tempRow[unitHeader] = systemName;
+        continue;
+      }
 
-// Match terms from the current section
-const matches = matchMappedTermsBySection(txt, currentSection, mappingDict, headerMap);
-if (Object.keys(matches).length > 0) {
-    Object.assign(tempRow, matches);
-}
-      ////////////here
-      
+      // Match terms from the current section
+      const matches = matchMappedTermsBySection(txt, currentSection, mappingDict, headerMap);
+      if (Object.keys(matches).length > 0) {
+        Object.assign(tempRow, matches);
+      }
     }
 
     // Write any remaining data
@@ -648,39 +634,32 @@ function buildMappingDict(data) {
  * @param {Object} headerMap - The header mapping
  * @returns {Object} Matched values with their corresponding headers
  */
-function matchMappedTermsBySection(text, currentSection, mappingDict, headerMap) {
-    const res = {};
-    const sectionClean = deepTrim(currentSection);
-    const textUpper = text.toUpperCase();
-
-    // Process all terms from the mapping dictionary
-    for (const [hapTerm, mappings] of Object.entries(mappingDict)) {
-        // Skip empty terms
-        if (!hapTerm.trim()) continue;
-        
-        // Create regex pattern that matches the term followed by value pattern
-        const termPattern = new RegExp(
-            `${escapeRegExp(hapTerm)}\\s*[.:…]+\\s*([\\d.]+)(?:\\s*\\b\\w+\\b)?`,
-            'i'
-        );
-        
-        const match = text.match(termPattern);
-        if (match) {
-            const value = match[1];
-            console.log(`Matched term "${hapTerm}" with value "${value}"`);
-            
-            // Apply to all relevant columns
-            for (const [schedHeader, reqSection] of mappings) {
-                if (headerMap[schedHeader] !== undefined && 
-                    (!reqSection || sectionClean.includes(deepTrim(reqSection)))) {
-                    res[schedHeader] = schedHeader.includes("POWER") 
-                        ? stdPower(parseFloat(value)) 
-                        : value;
-                }
-            }
+function matchMappedTermsBySection(txt, currentSection, mappingDict, headerMap) {
+  const res = {};
+  const clean = txt.toLowerCase();
+  const sectionClean = deepTrim(currentSection);
+  
+  // Check each term in the mapping dictionary
+  for (const hapKey of Object.keys(mappingDict)) {
+    const hapKeyLower = hapKey.toLowerCase().trim();
+    if (clean.includes(hapKeyLower)) {
+      // Extract the numeric value associated with this term
+      const extracted = extractNumberFromContext(txt, hapKey);
+      
+      // Check all mappings for this term
+      for (const [schedHeader, reqSection] of mappingDict[hapKey]) {
+        const reqSectionClean = deepTrim(reqSection);
+        // If section matches (or no section specified)
+        if (!reqSection || sectionClean.includes(reqSectionClean)) {
+          if (headerMap[schedHeader] !== undefined) {
+            // Standardize power values if needed
+            res[schedHeader] = schedHeader.includes("POWER") ? stdPower(parseFloat(extracted)) : extracted;
+          }
         }
+      }
     }
-    return res;
+  }
+  return res;
 }
 
 /**
@@ -690,23 +669,20 @@ function matchMappedTermsBySection(text, currentSection, mappingDict, headerMap)
  * @returns {string} The extracted number or empty string if none found
  */
 function extractNumberFromContext(text, keyword) {
-  const index = text.toLowerCase().indexOf(keyword.toLowerCase());
-  if (index === -1) return "";
-  const after = text.slice(index + keyword.length).trim();
-
-  // Try to match number pairs first
-  const pairMatch = after.match(/\d+\.\d+\s*\/\s*\d+\.\d+/);
-  if (pairMatch) return pairMatch[0];
-
-  // Then try single numbers
-  const numMatch = after.match(/^([-+]?[0-9]*\.?[0-9]+)/);
+  // First try to match the pattern "keyword ... number"
+  const dottedPattern = new RegExp(`${escapeRegExp(keyword)}\\s*[.:…]+\\s*([\\d.]+)`, 'i');
+  const dottedMatch = text.match(dottedPattern);
+  if (dottedMatch) return dottedMatch[1];
+  
+  // Then try to find the first number after the keyword
+  const afterKeyword = text.slice(text.toLowerCase().indexOf(keyword.toLowerCase()) + keyword.length);
+  const numMatch = afterKeyword.match(/([-+]?[0-9]*\.?[0-9]+)/);
   if (numMatch) return numMatch[1];
-
-  // Fallback to last number in the text
+  
+  // Fallback to last number in text
   const allNums = text.match(/([-+]?[0-9]*\.?[0-9]+)/g);
   return allNums ? allNums[allNums.length - 1] : "";
 }
-
 /**
  * Standardizes power values to predefined levels
  * @param {number} value - The power value to standardize
@@ -772,3 +748,4 @@ async function requestLogout() {
   await logoutRequestLocal();
   console.log("logoutRequestLocal completed.");
 }
+
